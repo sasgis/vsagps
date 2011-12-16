@@ -1,0 +1,739 @@
+(*
+  VSAGPS Library. Copyright (C) 2011, Sergey Vasketsov
+  Please read <info_*.txt> file for License details and conditions (GNU GPLv3)
+*)
+unit vsagps_device_base;
+(*
+*)
+
+{$I vsagps_defines.inc}
+
+interface
+
+uses
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
+  SysUtils,
+{$if defined(USE_SIMPLE_CLASSES)}
+  vsagps_classes,
+{$else}
+  Classes,
+{$ifend}
+  vsagps_public_base,
+  vsagps_public_types,
+  vsagps_public_device,
+  vsagps_public_unit_info,
+  vsagps_public_unicode,
+  vsagps_public_sysutils,
+  vsagps_tools,
+  vsagps_queue,
+  vsagps_runtime;
+
+type
+  Tvsagps_device_base = class(TObject)
+  protected
+    FGPSDeviceHandle: THandle; // device handle
+    FGPSDeviceType: DWORD; // gdt_* constants
+    // all device params (link)
+    FALLDeviceUserPointer: Pointer;
+    FALLDeviceParams: PVSAGPS_ALL_DEVICE_PARAMS;
+    // this device params
+    FThisDeviceParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
+    // sync
+    FPtrCS_CloseHandle: PRTLCriticalSection;
+    // Device info
+    FUnitIndex: Byte;
+    FDeviceInfo: TStringList;
+    FSupportedProtocols: TStringList;
+    FUNIT_INFO: TVSAGPS_UNIT_INFO;
+    FUNIT_INFO_Changed: TVSAGPS_UNIT_INFO_DLL_Proc;
+    FUNIT_INFO_CS: PRTLCriticalSection;
+    // working thread
+    FWT_Handle: THandle;
+    FWT_Params: TVSAGPS_WorkingThread_Params;
+    // device name by user (from request for connect, may be empty)
+    FDeviceNameByUser: String;
+    // Autodetect object
+    FAutodetectObject: TObject;
+    // Request commands
+    FRequestGPSCommand_Apply_UTCDateTime: Boolean;
+  private
+    // connect to gps device
+    function WorkingThread_ConnectToDevice: Boolean;
+    // internal working thread routine
+    procedure WorkingThread_Internal_Routine;
+    // close internal working thread
+    procedure WorkingThread_Internal_Close(const AWaitFor: Boolean);
+  protected
+    // real name of the gps device to connect (autodetect!)
+    FGPSDeviceInfo_NameToConnectInternalA: PChar;
+{$if defined(VSAGPS_USE_UNICODE)}
+    FGPSDeviceInfo_NameToConnectInternalW: PWideChar;
+{$ifend}
+    FGPSDeviceSessionStarted: Byte;
+    // queue
+    FExternal_Queue: Tvsagps_queue;
+    // process packets from device
+    procedure WorkingThread_Process_Packets(const AWorkingThreadPacketFilter: DWORD);
+    // parse garmin packets - very simple
+    function Parse_GarminPVT_Packets(const pPacket: PGarminUSB_Custom_Packet; const BaseAuxPacketFlags: DWORD): DWORD;
+  protected
+    procedure InternalMakeUnitInfoCS;
+    procedure InternalKillUnitInfoCS;
+    procedure InternalWipeUnitInfoCS;
+    procedure InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: String);
+    procedure InternalResetRequestGPSCommand;
+    procedure InternalResetDeviceConnectionParams; virtual;
+    procedure InternalKillAutodetectObject;
+    procedure InternalCloseDevice;
+    procedure Internal_Before_Open_Device; virtual;
+    procedure Internal_Before_Close_Device; virtual;
+    function Internal_Do_Open_Device: Boolean;
+    function InternalGetUserPointer: Pointer;
+  protected
+    // start session - operations to establish connection
+    function WorkingThread_StartSession: Boolean; virtual;
+    // send query packet to gps
+    function WorkingThread_SendPacket: Boolean; virtual;
+    // receive packets from device to queue
+    function WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean; virtual;
+  public
+    constructor Create; virtual;
+    destructor Destroy; override;
+
+    procedure SetBaseParams(const AUnitIndex: Byte;
+                            const AGPSDeviceType: DWORD;
+                            const AExternal_Queue: Tvsagps_queue;
+                            const ADeviceNameByUser: String;
+                            const AAllDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
+                            const AThisDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
+                            const AALLDeviceUserPointer: Pointer;
+                            const AUNIT_INFO_Changed: TVSAGPS_UNIT_INFO_DLL_Proc;
+                            const APtrCS_CloseHandle: PRTLCriticalSection);
+
+    procedure Connect;
+    procedure Disconnect;
+
+    procedure KillNow;
+
+    procedure ExecuteGPSCommand(const ACommand: LongInt;
+                                const APointer: Pointer); virtual;
+
+    function SerializePacket(const APacket: Pointer): PChar; virtual; abstract;
+    function ParsePacket(const ABuffer: Pointer): DWORD; virtual; abstract;
+
+    function SendPacket(const APacketBuffer: Pointer;
+                        const APacketSize: DWORD;
+                        const AFlags: DWORD): LongBool; virtual; abstract;
+
+    function AllocSupportedProtocols: PChar;
+    function AllocDeviceInfo: PChar;
+    function AllocUnitInfo: PChar;
+
+    property GPSDeviceHandle: THandle read FGPSDeviceHandle;
+    property GPSDeviceType: DWORD read FGPSDeviceType;
+    property FinishReason: DWORD read FWT_Params.dwFinishReason;
+  end;
+
+{$if not defined(USE_NMEA_VTG)}
+  PNMEA_VTG=Pointer;
+{$ifend}
+
+  Tvsagps_device_with_nmea = class(Tvsagps_device_base)
+  protected
+    // nmea callback routines (set to parser)
+    function FParser_FOnGGA(const p: PNMEA_GGA): DWORD;
+    function FParser_FOnGLL(const p: PNMEA_GLL): DWORD;
+    function FParser_FOnGSA(const p: PNMEA_GSA): DWORD;
+    function FParser_FOnGSV(const p: PNMEA_GSV): DWORD;
+    function FParser_FOnRMC(const p: PNMEA_RMC): DWORD;
+    function FParser_FOnVTG(const p: PNMEA_VTG): DWORD;
+  end;
+
+function Is_Pid_RecMeasData_Type_Packet(const pPacket: PGarminUSB_Custom_Packet; const pdwAuxPacket: PDWORD): LongBool;
+function Is_Pid_D800_Pvt_Type_Packet(const pPacket: PGarminUSB_Custom_Packet; const pdwAuxPacket: PDWORD): LongBool;
+
+procedure InternalSetUTCDateTimeFromGarmin(const pData: PD800_Pvt_Data_Type);
+
+implementation
+
+uses
+  vsagps_public_garmin,
+  vsagps_memory;
+
+function Is_Pid_RecMeasData_Type_Packet(const pPacket: PGarminUSB_Custom_Packet; const pdwAuxPacket: PDWORD): LongBool;
+begin
+  if (PT_Application_Layer=pPacket^.Packet_Type) and (L001_Pid_RecMeasData=pPacket^.Packet_ID) then
+    Result:=TRUE
+  else if (sizeof(cpo_all_sat_data)<>pPacket^.Data_Size) then
+    Result:=FALSE
+  else if ((PT_Unknown200_Layer=pPacket^.Packet_Type) or
+           (PT_Unknown72_Layer=pPacket^.Packet_Type))
+          and
+          ((Pid_Unknown30664_Pvt=pPacket^.Packet_ID) or
+           (Pid_Unknown34760_Pvt=pPacket^.Packet_ID) or
+           (Pid_Unknown35400_Pvt=pPacket^.Packet_ID)) then begin
+    Result:=TRUE;
+    pdwAuxPacket^:=(pdwAuxPacket^ or vgpt_Auxillary);
+  end else
+    Result:=FALSE;
+end;
+
+function Is_Pid_D800_Pvt_Type_Packet(const pPacket: PGarminUSB_Custom_Packet; const pdwAuxPacket: PDWORD): LongBool;
+begin
+  if (PT_Application_Layer=pPacket^.Packet_Type) and (L001_Pid_Pvt_Data=pPacket^.Packet_ID) then
+    Result:=TRUE
+  else if (sizeof(D800_Pvt_Data_Type)<>pPacket^.Data_Size) then
+    Result:=FALSE
+  else if ((PT_Unknown200_Layer=pPacket^.Packet_Type) or
+           (PT_Unknown72_Layer=pPacket^.Packet_Type))
+          and
+          ((Pid_Unknown35016_Pvt=pPacket^.Packet_ID) or
+           (Pid_Unknown35144_Pvt=pPacket^.Packet_ID) or
+           (Pid_Unknown34888_Pvt=pPacket^.Packet_ID) or
+           (Pid_Unknown47048_Pvt=pPacket^.Packet_ID)) then begin
+    Result:=TRUE;
+    pdwAuxPacket^:=(pdwAuxPacket^ or vgpt_Auxillary);
+  end else
+    Result:=FALSE;
+end;
+
+procedure InternalSetUTCDateTimeFromGarmin(const pData: PD800_Pvt_Data_Type);
+var st: TSystemTime;
+begin
+  DateTimeToSystemTime(Get_UTCDateTime_From_D800(pData), st);
+  SetSystemTime(st);
+end;
+
+function Internal_WorkingThread_System_Routine(lpParameter: Pointer): DWORD; stdcall;
+begin
+  Result:=0;
+  try
+    if (nil<>lpParameter) then
+      Tvsagps_device_base(lpParameter).WorkingThread_Internal_Routine;
+  except
+  end;
+  try
+    // set exiting flag
+    if (nil<>lpParameter) then
+      Tvsagps_device_base(lpParameter).FWT_Params.bSelfExited:=TRUE;
+  except
+  end;
+end;
+
+{ Tvsagps_device_base }
+
+procedure Tvsagps_device_base.Connect;
+begin
+  InternalMakeUnitInfoCS;
+  // start internal working thread
+  VSAGPS_WorkingThread_Make(@FWT_Handle,
+                            @FWT_Params,
+                            Internal_WorkingThread_System_Routine,
+                            Pointer(Self));
+end;
+
+constructor Tvsagps_device_base.Create;
+begin
+  //inherited Create;
+  FUNIT_INFO_CS:=nil;
+  InternalResetRequestGPSCommand;
+  SetBaseParams(0,0,nil,'',nil,nil,nil,nil,nil);
+  FGPSDeviceSessionStarted:=0;
+  FWT_Handle:=0;
+  VSAGPS_WorkingThread_InitParams(@FWT_Params);
+  FGPSDeviceHandle:=0;
+  FGPSDeviceInfo_NameToConnectInternalA:=nil;
+{$if defined(VSAGPS_USE_UNICODE)}
+  FGPSDeviceInfo_NameToConnectInternalW:=nil;
+{$ifend}
+  FAutodetectObject:=nil;
+  FDeviceInfo:=TStringList.Create;
+  FSupportedProtocols:=TStringList.Create;
+  InternalResetDeviceConnectionParams;
+  InternalWipeUnitInfoCS;
+end;
+
+destructor Tvsagps_device_base.Destroy;
+begin
+  WorkingThread_Internal_Close(TRUE);
+  VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+{$if defined(VSAGPS_USE_UNICODE)}
+  VSAGPS_FreeAndNil_PWideChar(FGPSDeviceInfo_NameToConnectInternalW);
+{$ifend}
+  FExternal_Queue:=nil;
+  InternalCloseDevice;
+  InternalKillAutodetectObject;
+  FreeAndNil(FDeviceInfo);
+  FreeAndNil(FSupportedProtocols);
+  InternalWipeUnitInfoCS;
+  InternalKillUnitInfoCS;
+  inherited;
+end;
+
+procedure Tvsagps_device_base.Disconnect;
+begin
+  WorkingThread_Internal_Close(FALSE);
+  //InternalCloseDevice; // async disconnect - allow pending
+end;
+
+procedure Tvsagps_device_base.ExecuteGPSCommand(const ACommand: LongInt;
+                                                const APointer: Pointer);
+begin
+  if (gpsc_Apply_UTCDateTime = ACommand) then
+    //if (0 = (FGPSDeviceType and gdt_FILE_Track)) then // do not apply time from tracks
+      FRequestGPSCommand_Apply_UTCDateTime:=TRUE;
+end;
+
+function Tvsagps_device_base.AllocDeviceInfo: PChar;
+begin
+  if (nil=FDeviceInfo) or (0=FDeviceInfo.Count) then
+    Result:=nil
+  else
+    Result:=VSAGPS_AllocPCharByString(FDeviceInfo.Text,TRUE);
+end;
+
+function Tvsagps_device_base.AllocSupportedProtocols: PChar;
+begin
+  if (nil=FSupportedProtocols) or (0=FSupportedProtocols.Count) then
+    Result:=nil
+  else
+    Result:=VSAGPS_AllocPCharByString(FSupportedProtocols.Text,TRUE);
+end;
+
+function Tvsagps_device_base.AllocUnitInfo: PChar;
+var
+  i: TVSAGPS_UNIT_INFO_Kind;
+  sl: TStringList;
+begin
+  sl:=TStringList.Create;
+  try
+    // to list
+    for i := Low(TVSAGPS_UNIT_INFO_Kind) to High(TVSAGPS_UNIT_INFO_Kind) do begin
+      sl.Append(FUNIT_INFO[i]);
+    end;
+    // to result
+    Result:=VSAGPS_AllocPCharByString(sl.Text,TRUE);
+  finally
+    sl.Free;
+  end;
+end;
+
+procedure Tvsagps_device_base.WorkingThread_Internal_Close(const AWaitFor: Boolean);
+begin
+  VSAGPS_WorkingThread_Kill(@FWT_Handle, @FWT_Params, AWaitFor);
+end;
+
+procedure Tvsagps_device_base.WorkingThread_Internal_Routine;
+begin
+  try
+    //inherited;
+    // connect to device
+    if not WorkingThread_ConnectToDevice then
+      Exit;
+    // start session (wait for communication established)
+    if not WorkingThread_StartSession then
+      Exit;
+    // send first qwery packet (start data comunicating)
+    if not WorkingThread_SendPacket then
+      Exit;
+    // user callback
+    try
+      if Assigned(FALLDeviceParams.pSessionStartedHandler) then
+        FALLDeviceParams.pSessionStartedHandler(InternalGetUserPointer, FUnitIndex, FGPSDeviceType, nil);
+    except
+    end;
+    // loop reading received packets
+    WorkingThread_Process_Packets(0);
+  finally
+    InternalCloseDevice;
+  end;
+end;
+
+procedure Tvsagps_device_base.InternalCloseDevice;
+begin
+  if FPtrCS_CloseHandle<>nil then
+    EnterCriticalSection(FPtrCS_CloseHandle^);
+  try
+    if (0<>FGPSDeviceHandle) then begin
+      Internal_Before_Close_Device;
+      if (FakeFileHandle<>FGPSDeviceHandle) then
+        CloseHandle(FGPSDeviceHandle);
+      FGPSDeviceHandle:=0;
+      InternalResetDeviceConnectionParams;
+    end;
+  finally
+    if FPtrCS_CloseHandle<>nil then
+      LeaveCriticalSection(FPtrCS_CloseHandle^);
+  end;
+end;
+
+function Tvsagps_device_base.InternalGetUserPointer: Pointer;
+begin
+  if (nil<>FThisDeviceParams) then
+    Result:=FThisDeviceParams^.pUserPointer
+  else
+    Result:=FALLDeviceUserPointer;
+end;
+
+procedure Tvsagps_device_base.InternalKillAutodetectObject;
+begin
+  if (nil<>FAutodetectObject) then
+    FreeAndNil(FAutodetectObject);
+end;
+
+procedure Tvsagps_device_base.InternalKillUnitInfoCS;
+begin
+  if (nil<>FUNIT_INFO_CS) then begin
+    DeleteCriticalSection(FUNIT_INFO_CS^);
+    Dispose(FUNIT_INFO_CS);
+    FUNIT_INFO_CS:=nil;
+  end;
+end;
+
+procedure Tvsagps_device_base.InternalMakeUnitInfoCS;
+begin
+  if (dpdfi_SyncUnitInfo = (FALLDeviceParams^.dwDeviceFlagsIn and dpdfi_SyncUnitInfo)) then begin
+    // need sync
+    if (nil=FUNIT_INFO_CS) then begin
+      New(FUNIT_INFO_CS);
+      InitializeCriticalSection(FUNIT_INFO_CS^);
+    end;
+  end else begin
+    // no sync
+    InternalKillUnitInfoCS;
+  end;
+end;
+
+procedure Tvsagps_device_base.InternalResetDeviceConnectionParams;
+begin
+  FGPSDeviceSessionStarted:=0;
+end;
+
+procedure Tvsagps_device_base.InternalResetRequestGPSCommand;
+begin
+  FRequestGPSCommand_Apply_UTCDateTime:=FALSE;
+end;
+
+procedure Tvsagps_device_base.InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: String);
+begin
+  if (nil<>FUNIT_INFO_CS) then
+    EnterCriticalSection(FUNIT_INFO_CS^);
+  try
+    if not SameText(FUNIT_INFO[AKind], ANewValue) then begin
+      // change
+      FUNIT_INFO[AKind] := ANewValue;
+      // notify
+      if Assigned(FUNIT_INFO_Changed) then
+        FUNIT_INFO_Changed(InternalGetUserPointer, FUnitIndex, FGPSDeviceType, AKind, PChar(ANewValue));
+    end;
+  finally
+    if (nil<>FUNIT_INFO_CS) then
+      LeaveCriticalSection(FUNIT_INFO_CS^);
+  end;
+end;
+
+procedure Tvsagps_device_base.InternalWipeUnitInfoCS;
+begin
+  if (nil<>FUNIT_INFO_CS) then
+    EnterCriticalSection(FUNIT_INFO_CS^);
+  try
+    Clear_TVSAGPS_UNIT_INFO(@FUNIT_INFO);
+  finally
+    if (nil<>FUNIT_INFO_CS) then
+      LeaveCriticalSection(FUNIT_INFO_CS^);
+  end;
+end;
+
+procedure Tvsagps_device_base.Internal_Before_Close_Device;
+begin
+// nothing
+end;
+
+procedure Tvsagps_device_base.Internal_Before_Open_Device;
+begin
+  // always redefined by name from user
+  VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+{$if defined(VSAGPS_USE_UNICODE)}
+  VSAGPS_FreeAndNil_PWideChar(FGPSDeviceInfo_NameToConnectInternalW);
+{$ifend}
+end;
+
+function Tvsagps_device_base.Internal_Do_Open_Device: Boolean;
+var
+  hFile: THandle;
+  dwDevNameLen: DWORD;
+  
+  procedure InternalSetEmpty;
+  begin
+    InternalSetUnitInfo(guik_DeviceDriverName, '');
+  end;
+
+  procedure InternalSetNameA;
+  var sDevDriverName: String;
+  begin
+    SafeSetStringL(sDevDriverName, FGPSDeviceInfo_NameToConnectInternalA, dwDevNameLen);
+    InternalSetUnitInfo(guik_DeviceDriverName, sDevDriverName);
+  end;
+
+  procedure InternalSetNameW;
+{$if defined(VSAGPS_USE_UNICODE)}
+  var sDevDriverNameW: WideString;
+{$ifend}
+  begin
+{$if defined(VSAGPS_USE_UNICODE)}
+    if (nil<>FGPSDeviceInfo_NameToConnectInternalW) then begin
+      SetString(sDevDriverNameW, FGPSDeviceInfo_NameToConnectInternalW, StrLenW(FGPSDeviceInfo_NameToConnectInternalW));
+      InternalSetUnitInfo(guik_DeviceDriverName, sDevDriverNameW);
+    end;
+{$ifend}
+  end;
+
+  procedure InternalSetNameAW;
+  begin
+{$if defined(VSAGPS_USE_UNICODE)}
+    if (nil<>FGPSDeviceInfo_NameToConnectInternalW) then
+      InternalSetNameW
+    else
+{$ifend}
+    if (nil<>FGPSDeviceInfo_NameToConnectInternalA) then
+      InternalSetNameA;
+  end;
+  
+begin
+  Result:=FALSE;
+
+  if (FakeFileHandle=FGPSDeviceHandle) then begin
+    // open files internally (without handle)
+    Result:=TRUE;
+    InternalSetNameAW;
+    Exit;
+  end;
+
+{$if defined(VSAGPS_USE_UNICODE)}
+  if (nil<>FGPSDeviceInfo_NameToConnectInternalW) then begin
+    // open file or device
+    hFile:=CreateFileW(FGPSDeviceInfo_NameToConnectInternalW,
+                       GENERIC_READ,
+                       (FILE_SHARE_READ or FILE_SHARE_WRITE),
+                       nil,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       0);
+  end else
+{$ifend}
+  begin
+    // device
+    if (nil=FGPSDeviceInfo_NameToConnectInternalA) then
+      dwDevNameLen:=0
+    else
+      dwDevNameLen:=StrLen(FGPSDeviceInfo_NameToConnectInternalA);
+
+    if (0=dwDevNameLen) then begin
+      // no device name
+      InternalSetEmpty;
+      FWT_Params.dwFinishReason:=(FWT_Params.dwFinishReason or wtfr_No_Device_Name);
+      Exit;
+    end;
+
+    if (FALLDeviceParams^.btAutodetectOnConnect<>0) and (FGPSDeviceHandle<>0) then begin
+      // already connected !!!
+      InternalSetNameA;
+      Result:=TRUE;
+      Exit;
+    end;
+
+    // com+usb
+    hFile:=CreateFileA(FGPSDeviceInfo_NameToConnectInternalA,
+                       (GENERIC_READ or GENERIC_WRITE),
+                       0,
+                       nil,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       0);
+  end;
+
+
+  if (0=hFile) or (INVALID_HANDLE_VALUE=hFile) then begin
+    // failed
+    FWT_Params.dwLastError:=GetLastError;
+    FWT_Params.dwFinishReason:=(FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+    InternalSetEmpty;
+  end else begin
+    // ok
+    FGPSDeviceHandle:=hFile;
+    Result:=TRUE;
+    InternalSetNameAW;
+  end;
+end;
+
+procedure Tvsagps_device_base.KillNow;
+begin
+  if (0<>FWT_Handle) then begin
+    TerminateThread(FWT_Handle,0);
+    Closehandle(FWT_Handle);
+    FWT_Handle:=0;
+  end;
+  FGPSDeviceSessionStarted:=0;
+  InternalCloseDevice;
+end;
+
+function Tvsagps_device_base.Parse_GarminPVT_Packets(const pPacket: PGarminUSB_Custom_Packet; const BaseAuxPacketFlags: DWORD): DWORD;
+var
+  dwAuxPacket: DWORD;
+  pFunc: TVSAGPS_GARMIN_ABSTRACT_HANDLER;
+begin
+  Result:=0;
+  if (nil=pPacket) then
+    Exit;
+  dwAuxPacket:=BaseAuxPacketFlags;
+  // check packet type
+  if Is_Pid_D800_Pvt_Type_Packet(pPacket, @dwAuxPacket) then begin
+    // if ask to apply gps time to computer time - for garmin - do it from PVT-handler
+    if FRequestGPSCommand_Apply_UTCDateTime then begin
+      FRequestGPSCommand_Apply_UTCDateTime:=FALSE;
+      InternalSetUTCDateTimeFromGarmin(Pointer(@(pPacket^.Data)));
+    end;
+    // PVT data packets
+    pFunc:=TVSAGPS_GARMIN_ABSTRACT_HANDLER(FALLDeviceParams^.pGARMIN_D800_HANDLER);
+    if Assigned(pFunc) then begin
+      Result:=pFunc(InternalGetUserPointer, FUnitIndex, dwAuxPacket, pPacket^.Data_Size, Pointer(@(pPacket^.Data)));
+    end;
+  end else if Is_Pid_RecMeasData_Type_Packet(pPacket, @dwAuxPacket) then begin
+    // RecMeasData
+    pFunc:=TVSAGPS_GARMIN_ABSTRACT_HANDLER(FALLDeviceParams^.pGARMIN_MEAS_HANDLER);
+    if Assigned(pFunc) then begin
+      Result:=pFunc(InternalGetUserPointer, FUnitIndex, dwAuxPacket, pPacket^.Data_Size, Pointer(@(pPacket^.Data)));
+    end;
+  end;
+end;
+
+procedure Tvsagps_device_base.SetBaseParams(
+  const AUnitIndex: Byte;
+  const AGPSDeviceType: DWORD;
+  const AExternal_Queue: Tvsagps_queue;
+  const ADeviceNameByUser: String;
+  const AAllDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
+  const AThisDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
+  const AALLDeviceUserPointer: Pointer;
+  const AUNIT_INFO_Changed: TVSAGPS_UNIT_INFO_DLL_Proc;
+  const APtrCS_CloseHandle: PRTLCriticalSection);
+begin
+  FUnitIndex:=AUnitIndex;
+  FGPSDeviceType:=AGPSDeviceType;
+  FExternal_Queue:=AExternal_Queue;
+  FDeviceNameByUser:=ADeviceNameByUser;
+  FALLDeviceParams:=AAllDevParams;
+  FThisDeviceParams:=AThisDevParams;
+  FALLDeviceUserPointer:=AALLDeviceUserPointer;
+  FUNIT_INFO_Changed:=AUNIT_INFO_Changed;
+  FPtrCS_CloseHandle:=APtrCS_CloseHandle;
+end;
+
+function Tvsagps_device_base.WorkingThread_ConnectToDevice: Boolean;
+begin
+  Internal_Before_Open_Device;
+  Result:=Internal_Do_Open_Device;
+end;
+
+procedure Tvsagps_device_base.WorkingThread_Process_Packets(const AWorkingThreadPacketFilter: DWORD);
+var dwDelay: DWORD;
+begin
+  if (nil<>FThisDeviceParams) then
+    dwDelay:=FThisDeviceParams^.wWorkerThreadTimeoutMSec
+  else if (nil<>FALLDeviceParams) then
+    dwDelay:=FALLDeviceParams^.wWorkerThreadTimeoutMSec
+  else
+    dwDelay:=cWorkingThread_Default_Delay_Msec;
+
+  // process reading packets from device to queue
+  repeat
+    if (0=FGPSDeviceHandle) then
+      Exit;
+
+    // read packets from device
+    if WorkingThread_Receive_Packets(AWorkingThreadPacketFilter) then
+      Exit;
+
+    Sleep(0);
+
+    if VSAGPS_WorkingThread_NeedToExit(@FWT_Params) then
+      Exit;
+
+    // Sleep
+    Sleep(dwDelay);
+  until FALSE;
+end;
+
+function Tvsagps_device_base.WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean;
+begin
+  Result:=FALSE; // to end outer loop just return FALSE
+end;
+
+function Tvsagps_device_base.WorkingThread_SendPacket: Boolean;
+begin
+  Result:=FALSE; // to cancel just return FALSE
+end;
+
+function Tvsagps_device_base.WorkingThread_StartSession: Boolean;
+begin
+  Result:=FALSE; // to cancel just return FALSE
+end;
+
+{ Tvsagps_device_with_nmea }
+
+function Tvsagps_device_with_nmea.FParser_FOnGGA(const p: PNMEA_GGA): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pNMEA_GGA_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_GGA_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+    Result:=0;
+end;
+
+function Tvsagps_device_with_nmea.FParser_FOnGLL(const p: PNMEA_GLL): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pNMEA_GLL_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_GLL_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+    Result:=0;
+end;
+
+function Tvsagps_device_with_nmea.FParser_FOnGSA(const p: PNMEA_GSA): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pNMEA_GSA_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_GSA_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+    Result:=0;
+end;
+
+function Tvsagps_device_with_nmea.FParser_FOnGSV(const p: PNMEA_GSV): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pNMEA_GSV_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_GSV_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+    Result:=0;
+end;
+
+function Tvsagps_device_with_nmea.FParser_FOnRMC(const p: PNMEA_RMC): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pNMEA_RMC_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_RMC_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+    Result:=0;
+end;
+
+function Tvsagps_device_with_nmea.FParser_FOnVTG(const p: PNMEA_VTG): DWORD;
+begin
+{$if defined(USE_NMEA_VTG)}
+  if Assign(FALLDeviceParams^.pNMEA_VTG_HANDLER) then
+    Result:=FALLDeviceParams^.pNMEA_VTG_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+  else
+{$ifend}
+    Result:=0;
+end;
+
+end.
+
+
+

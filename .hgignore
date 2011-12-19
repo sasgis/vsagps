@@ -2,3 +2,5 @@ syntax: glob
 BIN/VSAGPS.dll
 BIN/garminusb_getinfo.exe
 del_dcu.bat
+RUNTIME/__history/*.*
+PUBLIC/__history/*.*

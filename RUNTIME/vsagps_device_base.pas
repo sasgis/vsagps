@@ -282,7 +282,7 @@ procedure Tvsagps_device_base.ExecuteGPSCommand(const ACommand: LongInt;
                                                 const APointer: Pointer);
 begin
   if (gpsc_Apply_UTCDateTime = ACommand) then
-    //if (0 = (FGPSDeviceType and gdt_FILE_Track)) then // do not apply time from tracks
+    if (0 = (FGPSDeviceType and gdt_FILE_Track)) then // do not apply time from tracks
       FRequestGPSCommand_Apply_UTCDateTime:=TRUE;
 end;
 
@@ -640,12 +640,7 @@ end;
 procedure Tvsagps_device_base.WorkingThread_Process_Packets(const AWorkingThreadPacketFilter: DWORD);
 var dwDelay: DWORD;
 begin
-  if (nil<>FThisDeviceParams) then
-    dwDelay:=FThisDeviceParams^.wWorkerThreadTimeoutMSec
-  else if (nil<>FALLDeviceParams) then
-    dwDelay:=FALLDeviceParams^.wWorkerThreadTimeoutMSec
-  else
-    dwDelay:=cWorkingThread_Default_Delay_Msec;
+  dwDelay := GetDeviceWorkerThreadTimeoutMSec(FALLDeviceParams, FThisDeviceParams);
 
   // process reading packets from device to queue
   repeat

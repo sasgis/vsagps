@@ -81,6 +81,7 @@ uses
   vsagps_memory,
   vsagps_device_usb_garmin,
   vsagps_device_com_nmea,
+  vsagps_track_reader,
   vsagps_runtime;
 
 { Tvsagps_object }
@@ -142,10 +143,7 @@ var
   end;
 
 begin
-  if (nil<>FALLDeviceParams) then
-    dwDelay:=FALLDeviceParams^.wWorkerThreadTimeoutMSec
-  else
-    dwDelay:=cWorkingThread_Default_Delay_Msec;
+  dwDelay := GetDeviceWorkerThreadTimeoutMSec(FALLDeviceParams, nil);
 
   repeat
   try
@@ -356,7 +354,7 @@ begin
   Result:=FALSE;
   if (0=(AGPSDevType and
           (gdt_USB_Garmin or
-           //gdt_FILE_Track or
+           gdt_FILE_Track or
            gdt_COM_NMEA0183))) then
     Exit;
   if (nil=AUnitIndexOut) then
@@ -369,8 +367,8 @@ begin
     Exit;
   if (nil<>FPacketThread) and (FPacketThread.Terminated) then
     Exit;
-  //if (gdt_FILE_Track=(AGPSDevType and gdt_FILE_Track)) and (nil=AFileSource) then
-    //Exit;
+  if (gdt_FILE_Track=(AGPSDevType and gdt_FILE_Track)) and (nil=AFileSource) then
+    Exit;
   
   Lock_CS_State;
   try
@@ -400,7 +398,10 @@ begin
     p^.pDevParams:=ANewDevParams;
 
     // create object
-    if (gdt_USB_Garmin=(AGPSDevType and gdt_USB_Garmin)) then begin
+    if (gdt_FILE_Track=(AGPSDevType and gdt_FILE_Track)) then begin
+      // fly-on-track mode
+      p^.objDevice:=Tvsagps_track_reader.Create(AFileSource);
+    end else if (gdt_USB_Garmin=(AGPSDevType and gdt_USB_Garmin)) then begin
       // usb garmin
       p^.objDevice:=Tvsagps_device_usb_garmin.Create;
     end else if (gdt_COM_NMEA0183=(AGPSDevType and gdt_COM_NMEA0183)) then begin

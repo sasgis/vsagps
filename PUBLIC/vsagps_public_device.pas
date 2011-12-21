@@ -153,6 +153,9 @@ function GetReceiveGPSTimeoutSec(const pALLParams: PVSAGPS_ALL_DEVICE_PARAMS;
 
 function vssagps_GetConnectionTimeoutSec(const p: PVSAGPS_ALL_DEVICE_PARAMS): DWORD;
 
+function GetDeviceWorkerThreadTimeoutMSec(const pALLParams: PVSAGPS_ALL_DEVICE_PARAMS;
+                                          const pThisParams: PVSAGPS_SINGLE_DEVICE_PARAMS): DWORD;
+
 implementation
 
 function GetReceiveGPSTimeoutSec(const pALLParams: PVSAGPS_ALL_DEVICE_PARAMS;
@@ -179,6 +182,17 @@ begin
   except
     Result:=cWorkingThread_Connection_Timeout_Sec;
   end;
+end;
+
+function GetDeviceWorkerThreadTimeoutMSec(const pALLParams: PVSAGPS_ALL_DEVICE_PARAMS;
+                                          const pThisParams: PVSAGPS_SINGLE_DEVICE_PARAMS): DWORD;
+begin
+  if (nil<>pThisParams) then
+    Result:=pThisParams^.wWorkerThreadTimeoutMSec
+  else if (nil<>pALLParams) then
+    Result:=pALLParams^.wWorkerThreadTimeoutMSec
+  else
+    Result:=cWorkingThread_Default_Delay_Msec;
 end;
 
 end.

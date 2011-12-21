@@ -32,10 +32,9 @@ uses
 {$ifend}
 {$if defined(VSAGPS_USE_XERCES_XML_IMPORT)}
   xercesxmldom,
-{$else}
+{$ifend}
 {$if defined(VSAGPS_USE_MSXML_IMPORT)}
   msxmldom,
-{$ifend}
 {$ifend}
   //vsagps_public_xml_reader,
   Variants;
@@ -976,11 +975,19 @@ begin
   try
     // create doc using specified factory
 {$if defined(VSAGPS_USE_XERCES_XML_IMPORT)}
-    VDOMDocument:=XercesDOM.DOMImplementation.createDocument('','',nil);
-{$else}
-{$if defined(VSAGPS_USE_MSXML_IMPORT)}
-    VDOMDocument:=MSXML_DOM.DOMImplementation.createDocument('','',nil);
+    if (not Assigned(VDOMDocument)) then
+    try
+      VDOMDocument:=XercesDOM.DOMImplementation.createDocument('','',nil);
+    except
+    end;
 {$ifend}
+
+{$if defined(VSAGPS_USE_MSXML_IMPORT)}
+    if (not Assigned(VDOMDocument)) then
+    try
+      VDOMDocument:=MSXML_DOM.DOMImplementation.createDocument('','',nil);
+    except
+    end;
 {$ifend}
 
     if Assigned(VDOMDocument) then
@@ -996,6 +1003,9 @@ begin
     finally
       VDOMPersist:=nil;
       VDOMDocument:=nil;
+    end else begin
+      // no xml vendors
+      raise Exception.Create('No XML vendors available');
     end;
   finally
     if bInitUninit then

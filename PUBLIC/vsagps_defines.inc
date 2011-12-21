@@ -15,13 +15,11 @@
 
 {$if not defined(VSAGPS_XERCES_XML_IMPORT_FORBIDDEN)}
 {$define VSAGPS_USE_XERCES_XML_IMPORT}
-{$else}
+{$ifend}
+
 {$if not defined(VSAGPS_MSXML_IMPORT_FORBIDDEN)}
 {$define VSAGPS_USE_MSXML_IMPORT}
 {$ifend}
-{$ifend}
-
-
 
 {$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
 

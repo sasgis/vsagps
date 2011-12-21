@@ -31,7 +31,6 @@ uses
   vsagps_public_device,
   vsagps_device_base,
   vsagps_runtime,
-  //vsagps_gpx_reader,
   vsagps_parser_nmea;
 
 type
@@ -139,6 +138,8 @@ begin
   try
     pPacket:=VSAGPS_GetMemZ(sizeof(pPacket^));
     try
+      Sleep(0);
+      
       // position
       pPacket^.gps_data.PositionOK:=tData.latlon_ok;
       pPacket^.gps_data.PositionLon:=tData.lon1;
@@ -158,7 +159,8 @@ begin
 
       // send to queue
       FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
-      Sleep(100);
+      // wait
+      SleepInXMLParser;
     except
       VSAGPS_FreeMem(pPacket);
     end;
@@ -175,9 +177,9 @@ begin
   if (nil<>buf_ptr) then
   try
     // send buffer as packet
-    Sleep(100);
-    Parse_GarminPVT_Packets(Pointer(buf_ptr), 0);
     Sleep(0);
+    Parse_GarminPVT_Packets(Pointer(buf_ptr), 0);
+    SleepInXMLParser;
   finally
     VSAGPS_FreeMem(buf_ptr);
   end;
@@ -192,9 +194,9 @@ begin
   if (0<Length(S)) then begin
     if (cNmea_Starter=S[1]) then
       System.Delete(S,1,1);
-    Sleep(30);
-    Fparser_nmea.Parse_Sentence_Without_Starter(S);
     Sleep(0);
+    Fparser_nmea.Parse_Sentence_Without_Starter(S);
+    SleepInXMLParser;
   end;
 end;
 
@@ -242,7 +244,7 @@ begin
 
         // send
         FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
-        Sleep(200);
+        SleepInXMLParser;
       except
         VSAGPS_FreeMem(pPacket);
       end;

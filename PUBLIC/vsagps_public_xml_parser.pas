@@ -980,7 +980,6 @@ begin
 {$else}
 {$if defined(VSAGPS_USE_MSXML_IMPORT)}
     VDOMDocument:=MSXML_DOM.DOMImplementation.createDocument('','',nil);
-    async;
 {$ifend}
 {$ifend}
 

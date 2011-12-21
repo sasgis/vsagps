@@ -4,3 +4,4 @@ BIN/garminusb_getinfo.exe
 del_dcu.bat
 RUNTIME/__history/*.*
 PUBLIC/__history/*.*
+DCU/*.*

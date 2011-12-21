@@ -13,7 +13,24 @@
 
 //////{$define VSAGPS_USE_UNICODE}
 
+{$if not defined(VSAGPS_XERCES_XML_IMPORT_FORBIDDEN)}
+{$define VSAGPS_USE_XERCES_XML_IMPORT}
+{$else}
 {$if not defined(VSAGPS_MSXML_IMPORT_FORBIDDEN)}
 {$define VSAGPS_USE_MSXML_IMPORT}
 {$ifend}
+{$ifend}
 
+
+
+{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+
+{$if not defined(VSAGPS_IMPORT_GPX_FORBIDDEN)}
+{$define VSAGPS_ALLOW_IMPORT_GPX}
+{$ifend}
+
+//////{$if not defined(VSAGPS_IMPORT_KML_FORBIDDEN)}
+//////{$define VSAGPS_ALLOW_IMPORT_KML}
+//////{$ifend}
+
+{$ifend}

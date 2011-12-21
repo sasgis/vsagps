@@ -494,8 +494,8 @@ begin
             pPacket^.gps_data.PDOP:=cGps_Float32_no_data;
 
           // deserialize satellites params
-          if (wpt_hdop in pPX_data^.gpx_data.wpt_data.fAvail_wpt_params) then begin
-          end;
+          if (sasx_sats_info in pPX_data^.gpx_data.extensions_data.fAvail_strs) then
+            DeserializeSatsInfo(pPX_data^.gpx_data.extensions_data.sasx_strs[sasx_sats_info], pPacket);
 
           // send
           FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);

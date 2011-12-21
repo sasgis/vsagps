@@ -80,6 +80,8 @@ function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
 
 function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): String;
 
+function DeserializeSatsInfo(const pInfo: PWideChar; pSTP: PSingleTrackPointData): Boolean;
+
 implementation
 
 procedure InitSingleGPSData(p: PSingleGPSData);
@@ -116,6 +118,14 @@ begin
     // altitude
     if not NoData_Float64(p^.Altitude) then
       Result:=Result+','+FloatToStrF(p^.Altitude, ffFixed, 18, 10, fs);
+  end;
+end;
+
+function DeserializeSatsInfo(const pInfo: PWideChar; pSTP: PSingleTrackPointData): Boolean;
+begin
+  Result:=FALSE;
+  if (nil<>pInfo) then begin
+    //
   end;
 end;
 

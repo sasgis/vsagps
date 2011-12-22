@@ -61,26 +61,44 @@ type
   end;
   PSingleGPSData = ^TSingleGPSData;
 
+  TSingleSatsInfoEntry = packed record
+    single_fix: TSingleSatFixibilityData;
+    single_sky: TSingleSatSkyData;
+  end;
+  PSingleSatsInfoEntry = ^TSingleSatsInfoEntry;
+
+  TSingleSatsInfoData = packed record
+    entries: packed array [0..cNmea_max_sat_count-1] of TSingleSatsInfoEntry;
+  end;
+  PSingleSatsInfoData = ^TSingleSatsInfoData;
+
+  TFullSatsInfoData = packed record
+    gp: TSingleSatsInfoData; // gps
+    gl: TSingleSatsInfoData; // glonass
+  end;
+  PFullSatsInfoData = ^TFullSatsInfoData;
+
   TSingleTrackPointData = packed record
    gps_data: TSingleGPSData;
    gpx_sats_count: Byte;
    // aligned to 8
-   // reserved
-   ptr_reserved: Pointer;
-   dw_reserved: DWORD;
-   // sat_info
-   fix_data: TSingleSatFixibilityData;
-   sky_data: TSingleSatSkyData;
+   full_data_size: SmallInt;
+   w_reserved: Word;
   end;
   PSingleTrackPointData = ^TSingleTrackPointData;
+
+  TFullTrackPointData = packed record
+    single_item: TSingleTrackPointData;
+    fix_all: TVSAGPS_FIX_ALL;
+    sky_fix: TFullSatsInfoData;
+  end;
+  PFullTrackPointData = ^TFullTrackPointData;
 
 procedure InitSingleGPSData(p: PSingleGPSData); inline;
 
 function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
 
 function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): String;
-
-function DeserializeSatsInfo(const pInfo: PWideChar; pSTP: PSingleTrackPointData): Boolean;
 
 implementation
 
@@ -118,14 +136,6 @@ begin
     // altitude
     if not NoData_Float64(p^.Altitude) then
       Result:=Result+','+FloatToStrF(p^.Altitude, ffFixed, 18, 10, fs);
-  end;
-end;
-
-function DeserializeSatsInfo(const pInfo: PWideChar; pSTP: PSingleTrackPointData): Boolean;
-begin
-  Result:=FALSE;
-  if (nil<>pInfo) then begin
-    //
   end;
 end;
 

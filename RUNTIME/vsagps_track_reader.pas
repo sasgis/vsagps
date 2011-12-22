@@ -84,6 +84,7 @@ type
 implementation
 
 uses
+  vsagps_public_sats_info,
   vsagps_memory,
   DateUtils;
 
@@ -453,7 +454,9 @@ procedure Tvsagps_track_reader.ParseGPX_UserProc(const pPX_options: Pvsagps_XML_
                                                  const pPX_data: Pvsagps_XML_ParserResult;
                                                  const pPX_state: Pvsagps_XML_ParserState);
 {$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
-var pPacket: PSingleTrackPointData;
+var
+  pPacket: PSingleTrackPointData;
+  iAllocSize: SmallInt;
 {$ifend}
 begin
   // check exit
@@ -473,7 +476,16 @@ begin
         if (xtd_Close=pPX_state^.tag_disposition) then begin
           // completely
           Sleep(0);
-          pPacket:=VSAGPS_GetMemZ(sizeof(pPacket^));
+
+          // calc alloc size
+          if (sasx_sats_info in pPX_data^.gpx_data.extensions_data.fAvail_strs) then
+            iAllocSize:=sizeof(TFullTrackPointData)
+          else
+            iAllocSize:=sizeof(TSingleTrackPointData);
+
+          // alloc
+          pPacket:=VSAGPS_GetMemZ(iAllocSize);
+          pPacket^.full_data_size:=iAllocSize;
 
           // copy to buffer
           CopyMemory(@(pPacket^.gps_data), @(pPX_data^.gpx_data.wpt_data.fPos), sizeof(pPacket^.gps_data));
@@ -493,9 +505,9 @@ begin
           if not (wpt_pdop in pPX_data^.gpx_data.wpt_data.fAvail_wpt_params) then
             pPacket^.gps_data.PDOP:=cGps_Float32_no_data;
 
-          // deserialize satellites params
-          if (sasx_sats_info in pPX_data^.gpx_data.extensions_data.fAvail_strs) then
-            DeserializeSatsInfo(pPX_data^.gpx_data.extensions_data.sasx_strs[sasx_sats_info], pPacket);
+          // deserialize satellites params if full data
+          if (sizeof(TFullTrackPointData)=iAllocSize) then
+            DeserializeSatsInfo(pPX_data^.gpx_data.extensions_data.sasx_strs[sasx_sats_info], PFullTrackPointData(pPacket));
 
           // send
           FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);

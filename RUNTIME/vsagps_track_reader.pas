@@ -388,7 +388,7 @@ begin
   end else begin
     // supported by xml loader - gpx or kml
     _BeforeFile;
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
     VSAGPS_LoadAndParseXML(Self, nil, FCurrentFile, nil, TRUE, @FPX_options, rTVSAGPS_ParseGPX_UserProc, FFormatSettings);
 {$ifend}
   end;
@@ -452,7 +452,7 @@ end;
 procedure Tvsagps_track_reader.ParseGPX_UserProc(const pPX_options: Pvsagps_XML_ParserOptions;
                                                  const pPX_data: Pvsagps_XML_ParserResult;
                                                  const pPX_state: Pvsagps_XML_ParserState);
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
 var pPacket: PSingleTrackPointData;
 {$ifend}
 begin

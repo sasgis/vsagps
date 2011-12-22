@@ -27,16 +27,10 @@ uses
   vsagps_public_kml,
 {$ifend}
   vsagps_public_sysutils,
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
   xmldom,
 {$ifend}
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT)}
-  xercesxmldom,
-{$ifend}
-{$if defined(VSAGPS_USE_MSXML_IMPORT)}
-  msxmldom,
-{$ifend}
-  //vsagps_public_xml_reader,
+  vsagps_public_xml_dom,
   Variants;
 
 const
@@ -70,7 +64,7 @@ type
 
   Tvsagps_XML_ParserData_Abstract = packed record
     xml_strs: array [Tvsagps_XML_str] of PWideChar;
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
     xml_node_type: DOMNodeType;
 {$ifend}
     xml_has_child_nodes: WordBool;
@@ -168,7 +162,7 @@ type
 function Get_ParseXML_FileExtType(const wczSourceFilenameExt: WideString): Tvsagps_XML_source_format;
 function Get_ParseXML_FileType(const wczSourceFilename: WideString): Tvsagps_XML_source_format;
 
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_LoadAndParseXML(const pUserObjPointer: Pointer;
                                 const pUserAuxPointer: Pointer;
                                 const wczSourceFilename: WideString;
@@ -182,8 +176,8 @@ function VSAGPS_LoadAndParseXML(const pUserObjPointer: Pointer;
 implementation
 
 uses
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
-  Classes, // for TStream
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
+  Classes, // for Streams
   ActiveX,
 {$ifend}
   DateUtils;
@@ -216,7 +210,7 @@ begin
   end;
 end;
 
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_XML_DOMNodeValue(
   const ADOMNode: IDOMNode;
   const DenyUseTextFunc: Boolean = FALSE): WideString;
@@ -249,7 +243,7 @@ begin
 end;
 {$ifend}
 
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_Parse_Attrib_Double(
   const ADOMNode: IDOMNode;
   const AName: WideString;
@@ -298,7 +292,7 @@ begin
   Result:=Get_ParseXML_FileExtType(ExtractFileExtW(wczSourceFilename));
 end;
 
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_LoadAndParseXML(const pUserObjPointer: Pointer;
                                 const pUserAuxPointer: Pointer;
                                 const wczSourceFilename: WideString;
@@ -896,7 +890,6 @@ var
 
 var
   VDOMDocument: IDOMDocument;
-  VDOMPersist: IDOMPersist;
 
   function _LoadFromFile: Boolean;
   var ms: TMemoryStream;
@@ -904,7 +897,7 @@ var
     ms:=TMemoryStream.Create;
     try
       ms.LoadFromFile(wczSourceFilename);
-      Result:=(VDOMPersist.loadFromStream(ms)<>FALSE);
+      Result:=VSAGPS_Load_DOMDocument_FromStream(VDOMDocument, ms, TRUE);
     finally
       ms.Free;
     end;
@@ -914,7 +907,7 @@ var
   begin
     Result:=FALSE;
     if (nil<>V_px_state.objStream) then begin
-      if VDOMPersist.loadFromStream(TStream(V_px_state.objStream)) then
+      if VSAGPS_Load_DOMDocument_FromStream(VDOMDocument, TStream(V_px_state.objStream), TRUE) then
         Inc(Result);
     end else begin
       if _LoadFromFile then
@@ -971,41 +964,16 @@ begin
     res:=0;
 
   VDOMDocument:=nil;
-  VDOMPersist:=nil;
   try
-    // create doc using specified factory
-{$if defined(VSAGPS_USE_XERCES_XML_IMPORT)}
-    if (not Assigned(VDOMDocument)) then
+    // create doc using available factories (raise error if no xml vendors)
+    if VSAGPS_Create_DOMDocument(VDOMDocument, TRUE) then
     try
-      VDOMDocument:=XercesDOM.DOMImplementation.createDocument('','',nil);
-    except
-    end;
-{$ifend}
-
-{$if defined(VSAGPS_USE_MSXML_IMPORT)}
-    if (not Assigned(VDOMDocument)) then
-    try
-      VDOMDocument:=MSXML_DOM.DOMImplementation.createDocument('','',nil);
-    except
-    end;
-{$ifend}
-
-    if Assigned(VDOMDocument) then
-    try
-      // load
-      VDOMPersist := VDOMDocument as IDOMPersist;
-      if Assigned(VDOMPersist) then begin
-        // load from stream or from file and then parse doc
-        if _LoadDoc then
-          if (not _CheckAborted) then
-            _ParseDoc;
-      end;
+      // load from stream or from file and then parse doc
+      if _LoadDoc then
+        if (not _CheckAborted) then
+          _ParseDoc;
     finally
-      VDOMPersist:=nil;
       VDOMDocument:=nil;
-    end else begin
-      // no xml vendors
-      raise Exception.Create('No XML vendors available');
     end;
   finally
     if bInitUninit then

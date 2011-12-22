@@ -23,6 +23,8 @@
 
 {$if defined(VSAGPS_USE_XERCES_XML_IMPORT) or defined(VSAGPS_USE_MSXML_IMPORT)}
 
+{$define VSAGPS_USE_SOME_KIND_OF_XML_IMPORT}
+
 {$if not defined(VSAGPS_IMPORT_GPX_FORBIDDEN)}
 {$define VSAGPS_ALLOW_IMPORT_GPX}
 {$ifend}

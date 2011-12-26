@@ -94,6 +94,14 @@ type
   end;
   PFullTrackPointData = ^TFullTrackPointData;
 
+  TExecuteGPSCmd_WaypointData = packed record
+    sz_sasx_file_name: PChar;
+    sz_cmt: PChar;
+    sz_desc: PChar;
+    sz_sym: PChar;
+  end;
+  PExecuteGPSCmd_WaypointData = ^TExecuteGPSCmd_WaypointData;
+
 procedure InitSingleGPSData(p: PSingleGPSData); inline;
 
 function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;

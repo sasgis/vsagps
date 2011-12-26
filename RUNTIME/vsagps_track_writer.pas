@@ -338,7 +338,7 @@ begin
   // save internal file name created in EXE
   if (gpsc_WriteFileLinkToLog=ACommand) and (nil<>APointer) and (nil<>VSAGPS_GPX_WRITER_PARAMS) then
     if (0<>VSAGPS_GPX_WRITER_PARAMS^.btUse_Predefined_Extensions[geSASGIS]) then begin
-      FWriteSasxInternalFileName:=VSAGPS_AllocPCharByPChar(APointer, TRUE);
+      FExecuteGPSCmd_WaypointData.sz_sasx_file_name:=VSAGPS_AllocPCharByPChar(PExecuteGPSCmd_WaypointData(APointer)^.sz_sasx_file_name, TRUE);
       Result:=TRUE;
     end;
     

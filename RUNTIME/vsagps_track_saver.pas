@@ -47,8 +47,8 @@ type
     FCallCallbackOnParams: TVSAGPS_TrackParams;
     // flag to log localtime to sasx
     FWriteSasxLocalTime: LongBool;
-    // internal file name to log to sasx
-    FWriteSasxInternalFileName: PChar;
+    // internal file name and other params (to write to log)
+    FExecuteGPSCmd_WaypointData: TExecuteGPSCmd_WaypointData;
     // format
     FFormatSettings: TFormatSettings;
     // params by type
@@ -66,6 +66,7 @@ type
     procedure InitializeCallbackParams;
     procedure Internal_TTP_Init(const tt: TVSAGPS_TrackType);
     procedure Internal_TTP_Initialize;
+    procedure Clear_FExecuteGPSCmd_WaypointData;
   protected
     // datetime for sasx
     function InternalGetSasxLocalTime: String;
@@ -166,6 +167,14 @@ uses
 
 { Tvsagps_track_saver }
 
+procedure Tvsagps_track_saver.Clear_FExecuteGPSCmd_WaypointData;
+begin
+  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
+  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_cmt);
+  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_desc);
+  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sym);
+end;
+
 function Tvsagps_track_saver.CloseALL: LongBool;
 begin
   LockCS;
@@ -185,10 +194,11 @@ begin
   FVSAGPS_GPX_WRITER_PARAMS:=nil;
   FVSAGPS_LOGGER_GETVALUES_CALLBACK_PROC:=nil;
   FUserPointer:=nil;
-  FWriteSasxInternalFileName:=nil;
   FWriteSasxLocalTime:=FALSE;
   FActiveTrackTypes:=[];
   FCallCallbackOnParams:=[];
+
+  ZeroMemory(@FExecuteGPSCmd_WaypointData, sizeof(FExecuteGPSCmd_WaypointData));
 
   ZeroMemory(@FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS, sizeof(FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS));
   FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS.wSize:=sizeof(FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS);
@@ -208,7 +218,7 @@ begin
   CloseALL;
   DeleteCriticalSection(FCS);
   InitializeCallbackParams;
-  VSAGPS_FreeAndNil_PChar(FWriteSasxInternalFileName);
+  Clear_FExecuteGPSCmd_WaypointData;
   inherited;
 end;
 
@@ -594,7 +604,7 @@ end;
 
 function Tvsagps_track_saver.InternalGetSasxInternalFileName: String;
 begin
-  SafeSetStringP(Result, FWriteSasxInternalFileName);
+  SafeSetStringP(Result, FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
   if (0<Length(Result)) then
     Result:='<sasx:file_name>'+Result+'</sasx:file_name>'+#13#10;
 end;
@@ -755,14 +765,14 @@ begin
           
           // time - if requested (with flag) or if internal file created
           // for trk - always (without flag)
-          if (FWriteSasxLocalTime) or (tpTrkExtensions=ATrackParam) or (nil<>FWriteSasxInternalFileName) then begin
+          if (FWriteSasxLocalTime) or (tpTrkExtensions=ATrackParam) or (nil<>FExecuteGPSCmd_WaypointData.sz_sasx_file_name) then begin
             FWriteSasxLocalTime:=FALSE;
             AParamValue:=AParamValue+InternalGetSasxLocalTime;
           end;
 
-          if (nil<>FWriteSasxInternalFileName) then begin
+          if (nil<>FExecuteGPSCmd_WaypointData.sz_sasx_file_name) then begin
             AParamValue:=AParamValue+InternalGetSasxInternalFileName;
-            VSAGPS_FreeAndNil_PChar(FWriteSasxInternalFileName);
+            VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
           end;
         end;
 

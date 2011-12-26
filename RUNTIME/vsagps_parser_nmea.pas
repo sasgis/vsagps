@@ -61,6 +61,8 @@ type
     FOnApplyUTCDateTime: TOnApplyUTCDateTimeProc;
     FGSVNmeaCounterGP: Byte;
     FGSVNmeaCounterGL: Byte;
+    FGSVNmeaPrevGSVGP: Byte;
+    FGSVNmeaPrevGSVGL: Byte;
 
     FOnGGA: TOnGGAProc;
     FOnGLL: TOnGLLProc;
@@ -575,22 +577,31 @@ function Tvsagps_parser_nmea.Parse_and_Send_GSV_Data(const AData, ATalkerID: Str
 var
   h: TNMEA_GSV;
   i,j: Byte;
-  pCounter: PByte;
+  pCounter, pPrevGSV: PByte;
 begin
   Result:=0;
 
   h.dwSize:=sizeof(h);
   Parse_NMEA_TalkerID(ATalkerID, @(h.chTalkerID));
 
-  if SameText(ATalkerID, nmea_ti_GLONASS) then
-    pCounter:=@FGSVNmeaCounterGL
-  else
+  if SameText(ATalkerID, nmea_ti_GLONASS) then begin
+    pCounter:=@FGSVNmeaCounterGL;
+    pPrevGSV:=@FGSVNmeaPrevGSVGL;
+  end else begin
     pCounter:=@FGSVNmeaCounterGP;
+    pPrevGSV:=@FGSVNmeaPrevGSVGP;
+  end;
 
   // 1) total number of messages
   Parse_NMEA_SInt8(0, @(h.msg_total));
   // 2) message number
   Parse_NMEA_SInt8(1, @(h.msg_cur));
+
+  // if device duplicates single line - skip this
+  if (0<>pPrevGSV^) and (0<h.msg_total) and (0<h.msg_cur) then
+    if (pPrevGSV^ = Byte(h.msg_cur)) then
+      Exit;
+
   // 3) satellites in view
   Parse_NMEA_SInt8(2, @(h.sats_in_view));
 
@@ -623,6 +634,8 @@ begin
     // next
     Inc(i);
   until FALSE;
+
+  pPrevGSV^ := h.msg_cur;
 end;
 
 function Tvsagps_parser_nmea.Parse_and_Send_RMC_Data(const AData, ATalkerID: String): DWORD;

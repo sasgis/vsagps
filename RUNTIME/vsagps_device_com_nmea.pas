@@ -260,6 +260,8 @@ begin
   if (nil<>FParser) then begin
     FParser.FGSVNmeaCounterGP:=0;
     FParser.FGSVNmeaCounterGL:=0;
+    FParser.FGSVNmeaPrevGSVGP:=0;
+    FParser.FGSVNmeaPrevGSVGL:=0;
   end;
   FRequestGPSCommand_Apply_UTCDateTime:=FALSE;
   ZeroMemory(@FSavedUTCDateTime, sizeof(FSavedUTCDateTime));

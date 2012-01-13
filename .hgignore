@@ -5,3 +5,4 @@ del_dcu.bat
 RUNTIME/__history/*.*
 PUBLIC/__history/*.*
 DCU/*.*
+SAMPLES/garminusb_getinfo/__history/*.*

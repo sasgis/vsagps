@@ -290,15 +290,30 @@ begin
     // packets until the driver returns a 0 size buffer.
     repeat
       Sleep(0);
+
       // get packet
       pPacket:=ZwRecvReadPacket(@iosb);
+
+      // workaround for some bugs in some devices
+      if (nil<>pPacket) and (pPacket^.Data_Size>=MAX_BUFFER_SIZE) then begin
+        FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
+        pPacket:=ZwRecvReadPacket(@iosb);
+      end;
+
       // check Xfer_Complete and others
       _CheckInternalPacketFilter(Result);
+
       // add to queue
       FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
+
       // check returned data size
       if (0=iosb.Information) then
         break;
+
+      // workaround for some bugs in some devices
+      if Result then
+        if (wtfp_Protocol=(AWorkingThreadPacketFilter and wtfp_Protocol)) then
+          break;
     until FALSE;
   end;
 end;
@@ -309,8 +324,6 @@ var
   iosb: IO_STATUS_BLOCK;
   cmd_Packet_ID: Word;
 begin
-  // http://www.ualberta.ca/~ckuethe/gps/
-  
   // send start pvt packet
   // if L002 then use L002_Pid_Command_Data (very rare!) else use L001_Pid_Command_Data (usually)
   cmd_Packet_ID:=L001_Pid_Command_Data;
@@ -387,7 +400,7 @@ begin
                               sizeof(DWORD));
     // wait
     if (STATUS_PENDING=ns) then begin
-      li.QuadPart:=-10000*cWorkingThread_MaxTimeout_Msec;
+      li.QuadPart:=-12000000; // 1.2 msec max
       ns:=NtWaitForSingleObject(hEvent, FALSE, @li);
     end;
     // check
@@ -443,7 +456,7 @@ begin
                               AOutputBufferSize);
     // wait
     if (STATUS_PENDING=ns) then begin
-      li.QuadPart:=-10000*cWorkingThread_MaxTimeout_Msec;
+      li.QuadPart:=-12000000; // 1.2 msec max
       ns:=NtWaitForSingleObject(hEvent, FALSE, @li);
     end;
     // check
@@ -499,7 +512,7 @@ begin
                    nil);
     // wait
     if (STATUS_PENDING=ns) then begin
-      li.QuadPart:=-10000*cWorkingThread_MaxTimeout_Msec;
+      li.QuadPart:=-12000000; // 1.2 msec max
       ns:=NtWaitForSingleObject(hEvent, FALSE, @li);
     end;
     // check

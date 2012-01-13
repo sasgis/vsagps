@@ -455,7 +455,7 @@ begin
   try
     if (FUserIni=nil) then
       FUserIni:=TStringList.Create;
-    VSAGPS_ini_LoadFromFile(FUserIni);
+    VSAGPS_ini_LoadFromFile(FUserIni, vsagps_nmea_ini_filename);
     if (0=FUserIni.Count) then
       FreeAndNil(FUserIni);
   except

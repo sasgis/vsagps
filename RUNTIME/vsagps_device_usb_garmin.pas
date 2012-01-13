@@ -26,6 +26,11 @@ uses
   vsagps_public_garmin,
   vsagps_device_base;
 
+type
+  TGarminIniParams = record
+    ini_BreakOnLastProtocolPacket: Boolean;
+  end;
+  PGarminIniParams = ^TGarminIniParams;
 
 type
   Tvsagps_device_usb_garmin = class(Tvsagps_device_base)
@@ -33,9 +38,8 @@ type
     // API version (used by device)
     FAPIVersion: DWORD;
     FDevicePacketSize: DWORD; // packet size (info from device - used internally)
-    // Special workarounds
-    FRepeatReadOnCrazyDataSize: Boolean;
-    FExitOnLastProtocolPacket: Boolean;
+    // Special workarounds and other params
+    FGarminIniParams: PGarminIniParams;
   private
     // Low-level routines
     function ZwCallIoctl4(AIoControlCode: ULONG; iosb: PIO_STATUS_BLOCK; pData: PDWORD): LongBool;
@@ -50,6 +54,8 @@ type
     procedure Internal_Parse_Ext_Product_Data(const AData_Size: DWORD;
                                               const pData: PExt_Product_Data_Type);
   protected
+    procedure InternalCreateGarminIniParams(const AProductID, ADeviceInfo: String);
+    procedure InternalKillGarminIniParams;
     procedure InternalResetDeviceConnectionParams; override;
     procedure Internal_Before_Open_Device; override;
     // start session - operations to establish connection
@@ -59,6 +65,9 @@ type
     // receive packets from device to queue
     function WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean; override;
   public
+    constructor Create; override;
+    destructor Destroy; override;
+
     procedure ExecuteGPSCommand(const ACommand: LongInt;
                                 const APointer: Pointer); override;
     function SerializePacket(const APacket: Pointer): PChar; override;
@@ -74,11 +83,26 @@ implementation
 
 uses
   vsagps_tools,
+  vsagps_ini,
   vsagps_runtime,
   vsagps_memory,
   vsagps_public_unit_info;
 
 { Tvsagps_device_usb_garmin }
+
+constructor Tvsagps_device_usb_garmin.Create;
+begin
+  inherited;
+  FGarminIniParams:=nil;
+  // get common params
+  InternalCreateGarminIniParams('','');
+end;
+
+destructor Tvsagps_device_usb_garmin.Destroy;
+begin
+  InternalKillGarminIniParams;
+  inherited;
+end;
 
 procedure Tvsagps_device_usb_garmin.ExecuteGPSCommand(const ACommand: LongInt;
                                                       const APointer: Pointer);
@@ -87,13 +111,116 @@ begin
   // gpsc_Refresh_DGPS - not supported
 end;
 
+procedure Tvsagps_device_usb_garmin.InternalCreateGarminIniParams(const AProductID, ADeviceInfo: String);
+var
+  sl: TStringList;
+  t: TGarminIniParams;
+  VCheckProductID: Boolean;
+  VCheckDeviceInfo: Boolean;
+  VMakeByCommon: Boolean;
+
+  function _GetBooleanFrom(const ASrcTailWithEq: String): Boolean;
+  begin
+    // 0 or empty - false, else - true
+    Result:=(1<Length(ASrcTailWithEq)) and (ASrcTailWithEq[2]<>'0');
+  end;
+
+  // true if found
+  function _ReadSection(const ASectionNameUppercased: String; const bMain: Boolean): Boolean;
+  var
+    iSectionHeader: Integer;
+    sLine, sTail: String;
+  begin
+    // get index of section header
+    Result:=VSAGPS_ini_GetSectionHeader(sl, ASectionNameUppercased, iSectionHeader);
+    if Result then begin
+      // section found
+      Inc(iSectionHeader);
+
+      // lookup params
+      while (iSectionHeader<sl.Count) do begin
+        // get line
+        sLine:=sl[iSectionHeader];
+
+        // break on next section
+        if SameText(vsagps_ini_sectiona, System.Copy(sLine, 1, Length(vsagps_ini_sectiona))) then
+          break;
+
+        // check param(s) name(s)
+        if VSAGPS_ini_StartPromParam(sLine, vsagps_ini_BreakOnLastProtocolPacket, sTail) then begin
+          t.ini_BreakOnLastProtocolPacket:=_GetBooleanFrom(sTail);
+        end else if bMain then begin
+          // special (for main section only)
+          if VSAGPS_ini_StartPromParam(sLine, vsagps_ini_CheckByNumericProductID, sTail) then begin
+            VCheckProductID:=_GetBooleanFrom(sTail);
+          end else if VSAGPS_ini_StartPromParam(sLine, vsagps_ini_CheckByModelDescription, sTail) then begin
+            VCheckDeviceInfo:=_GetBooleanFrom(sTail);
+          end
+        end;
+
+        // next line
+        Inc(iSectionHeader);
+      end;
+    end;
+  end;
+begin
+  InternalKillGarminIniParams;
+
+  sl:=TStringList.Create;
+  try
+    VSAGPS_ini_LoadFromFile(sl, vsagps_garmin_ini_filename);
+    if (0<sl.Count) then begin
+      // init
+      Zeromemory(@t, sizeof(t));
+      VCheckProductID:=FALSE;
+      VCheckDeviceInfo:=FALSE;
+
+      // get COMMON section and check params
+      VMakeByCommon:=_ReadSection(vsagps_ini_common, TRUE);
+
+      // get from product_id section (if available and enabled)
+      if VCheckProductID then
+      if (0<Length(AProductID)) then
+      if _ReadSection(AProductID, FALSE) then begin
+        New(FGarminIniParams);
+        FGarminIniParams^:=t;
+        Exit;
+      end;
+
+      // get from deviceinfo section (if available and enabled)
+      if VCheckDeviceInfo then
+      if (0<Length(ADeviceInfo)) then
+      if _ReadSection(AnsiUpperCase(ADeviceInfo), FALSE) then begin
+        New(FGarminIniParams);
+        FGarminIniParams^:=t;
+        Exit;
+      end;
+
+      if VMakeByCommon then begin
+        New(FGarminIniParams);
+        FGarminIniParams^:=t;
+        //Exit;
+      end;
+    end;
+  finally
+    sl.Free;
+  end;
+end;
+
+procedure Tvsagps_device_usb_garmin.InternalKillGarminIniParams;
+begin
+  if (nil<>FGarminIniParams) then begin
+    Dispose(FGarminIniParams);
+    FGarminIniParams:=nil;
+  end;
+end;
+
 procedure Tvsagps_device_usb_garmin.InternalResetDeviceConnectionParams;
 begin
   inherited;
   FDevicePacketSize:=0;
   FAPIVersion:=0;
-  FRepeatReadOnCrazyDataSize:=FALSE;
-  FExitOnLastProtocolPacket:=FALSE;
+  InternalKillGarminIniParams;
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Before_Open_Device;
@@ -131,16 +258,24 @@ begin
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Product_Data(const AData_Size: DWORD; const pData: PProduct_Data_Type);
+var
+  VProductID, VDeviceInfo: String;
 begin
-  InternalSetUnitInfo(guik_Product_ID, IntToStr(pData^.product_ID));
+  VDeviceInfo:='';
+  VProductID:=IntToStr(pData^.product_ID);
+  InternalSetUnitInfo(guik_Product_ID, VProductID);
   InternalSetUnitInfo(guik_Software_Version, IntToStr(pData^.software_version));
 
   // parse and save model (first line from list) - 3 is the size of  starting fields
   parse_nullstrings_to_strings(AData_Size-3, @(pData^.product_description), FDeviceInfo, TRUE, FALSE);
   if (nil<>FDeviceInfo) and (0<FDeviceInfo.Count) then begin
-    InternalSetUnitInfo(guik_Model_Description_Full, FDeviceInfo[0]);
+    VDeviceInfo:=FDeviceInfo[0];
+    InternalSetUnitInfo(guik_Model_Description_Full, VDeviceInfo);
     FDeviceInfo.Delete(0);
   end;
+
+  // check workarounds and params
+  InternalCreateGarminIniParams(VProductID,VDeviceInfo);
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Protocol_Array(AData_Size: DWORD; pData: PProtocol_Array_Type);
@@ -213,6 +348,7 @@ function Tvsagps_device_usb_garmin.WorkingThread_Receive_Packets(const AWorkingT
 var
   pPacket: PGarminUSB_Custom_Packet;
   iosb: IO_STATUS_BLOCK;
+  bShouldReadMoreData: Boolean;
 
   function _NoIOCTL: Boolean;
   begin
@@ -287,10 +423,12 @@ begin
       break;
   until FALSE;
 
+  bShouldReadMoreData:=((PT_Protocol_Layer=pPacket^.Packet_Type) and (Pid_Data_Available=pPacket^.Packet_ID));
+
   // If this was a small "signal" packet, read a real packet using ReadFile
   if (_NoIOCTL) or
      (nil=pPacket) or
-     ((PT_Protocol_Layer=pPacket^.Packet_Type) and (Pid_Data_Available=pPacket^.Packet_ID)) then begin
+     (bShouldReadMoreData) then begin
     // A full implementation would keep reading (and queueing)
     // packets until the driver returns a 0 size buffer.
     repeat
@@ -300,11 +438,9 @@ begin
       pPacket:=ZwRecvReadPacket(@iosb);
 
       // workaround for some bugs in some devices
-      if FRepeatReadOnCrazyDataSize and (0<>AWorkingThreadPacketFilter) then
-      if (nil<>pPacket) and (pPacket^.Data_Size>=MAX_BUFFER_SIZE) then begin
-        FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
-        pPacket:=ZwRecvReadPacket(@iosb);
-      end;
+      if bShouldReadMoreData then
+        if (nil<>pPacket) and (pPacket^.Data_Size<MAX_BUFFER_SIZE) then
+          bShouldReadMoreData := FALSE; // got info
 
       // check Xfer_Complete and others
       _CheckInternalPacketFilter(Result);
@@ -313,13 +449,16 @@ begin
       FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
 
       // check returned data size
-      if (0=iosb.Information) then
-        break;
+      if (0=iosb.Information) then begin
+        if (not bShouldReadMoreData) then
+          break;
+      end;
 
       // workaround for some bugs in some devices
-      if FExitOnLastProtocolPacket and Result then
-        if (wtfp_Protocol=(AWorkingThreadPacketFilter and wtfp_Protocol)) then
-          break;
+      if Result then
+        if (nil<>FGarminIniParams) and (FGarminIniParams^.ini_BreakOnLastProtocolPacket) then
+          if (wtfp_Protocol=(AWorkingThreadPacketFilter and wtfp_Protocol)) then
+            break;
     until FALSE;
   end;
 end;

@@ -33,6 +33,9 @@ type
     // API version (used by device)
     FAPIVersion: DWORD;
     FDevicePacketSize: DWORD; // packet size (info from device - used internally)
+    // Special workarounds
+    FRepeatReadOnCrazyDataSize: Boolean;
+    FExitOnLastProtocolPacket: Boolean;
   private
     // Low-level routines
     function ZwCallIoctl4(AIoControlCode: ULONG; iosb: PIO_STATUS_BLOCK; pData: PDWORD): LongBool;
@@ -89,6 +92,8 @@ begin
   inherited;
   FDevicePacketSize:=0;
   FAPIVersion:=0;
+  FRepeatReadOnCrazyDataSize:=FALSE;
+  FExitOnLastProtocolPacket:=FALSE;
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Before_Open_Device;
@@ -295,6 +300,7 @@ begin
       pPacket:=ZwRecvReadPacket(@iosb);
 
       // workaround for some bugs in some devices
+      if FRepeatReadOnCrazyDataSize and (0<>AWorkingThreadPacketFilter) then
       if (nil<>pPacket) and (pPacket^.Data_Size>=MAX_BUFFER_SIZE) then begin
         FExternal_Queue.AppendGPSPacket(pPacket, FUnitIndex);
         pPacket:=ZwRecvReadPacket(@iosb);
@@ -311,7 +317,7 @@ begin
         break;
 
       // workaround for some bugs in some devices
-      if Result then
+      if FExitOnLastProtocolPacket and Result then
         if (wtfp_Protocol=(AWorkingThreadPacketFilter and wtfp_Protocol)) then
           break;
     until FALSE;

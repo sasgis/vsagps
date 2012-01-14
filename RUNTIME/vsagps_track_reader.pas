@@ -118,6 +118,7 @@ procedure Tvsagps_track_reader.InternalCreateNmeaParser;
 begin
   if (nil=Fparser_nmea) then begin
     Fparser_nmea:=Tvsagps_parser_nmea.Create;
+    Fparser_nmea.InitSpecialNmeaCounters;
     Fparser_nmea.FOnApplyUTCDateTime:=nil;
     Fparser_nmea.FOnGGA:=FParser_FOnGGA;
     Fparser_nmea.FOnGLL:=FParser_FOnGLL;

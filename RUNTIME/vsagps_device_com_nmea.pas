@@ -258,10 +258,7 @@ procedure Tvsagps_device_com_nmea.InternalResetDeviceConnectionParams;
 begin
   inherited;
   if (nil<>FParser) then begin
-    FParser.FGSVNmeaCounterGP:=0;
-    FParser.FGSVNmeaCounterGL:=0;
-    FParser.FGSVNmeaPrevGSVGP:=0;
-    FParser.FGSVNmeaPrevGSVGL:=0;
+    FParser.InitSpecialNmeaCounters;
   end;
   FRequestGPSCommand_Apply_UTCDateTime:=FALSE;
   ZeroMemory(@FSavedUTCDateTime, sizeof(FSavedUTCDateTime));

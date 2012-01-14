@@ -116,7 +116,7 @@ const
 
 type
   cpo_sat_data = packed record
-    svid: SInt8; // space vehicle identification (vsa: 01-32 or 33-64 for WAAS)
+    svid: SInt8; // space vehicle identification (vsa: 01-32 or 33-64 for WAAS or 65-96 for GLONASS)
 		snr: SInt16;	// signal-to-noise ratio (vsa: max >= 5090)
 	  elev: Byte;	// satellite elevation in degrees
 		azmth: Word;	// satellite azimuth in degrees
@@ -215,6 +215,7 @@ type
   TNMEA_GSA = packed record
     dwSize: Word;
     chTalkerID: TNMEA_TalkerID;
+    chCorrectedTalkerID: TNMEA_TalkerID; // for GNSS - defined by actual sat_id or index of record if no sat_id (first for GPS, second for GLONASS)
     // 1) Selection mode // #0 no data
     sel_mode: Char; // M - Manual – Forced to operate in 2D or 3D mode, A - 2D Automatic – Allowed to automatically switch 2D/3D
     // 2) Mode // <0 no data

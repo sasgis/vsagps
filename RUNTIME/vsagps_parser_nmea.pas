@@ -63,6 +63,8 @@ type
     FGSVNmeaCounterGL: Byte;
     FGSVNmeaPrevGSVGP: Byte;
     FGSVNmeaPrevGSVGL: Byte;
+    // counter
+    FGNGSANmeaCounter: Byte;
 
     FOnGGA: TOnGGAProc;
     FOnGLL: TOnGLLProc;
@@ -86,7 +88,7 @@ type
     procedure Parse_NMEA_Date(const AIndex: Byte; const ADate: PNMEA_Date);
     procedure Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
     procedure Parse_NMEA_GSV_INFO(const AIndex: Byte; const AGSV_INFO: PNMEA_GSV_INFO);
-    procedure Parse_NMEA_SatID(const AIndex: Byte; var ASatID: SInt8; var ASatIdNormalizedFlag: Byte);
+    procedure Parse_NMEA_SatID(const AIndex: Byte; const APtrSatID: PVSAGPS_FIX_SAT);
     procedure Parse_NMEA_SInt16(const AIndex: Byte; const ASInt16: PSInt16);
     procedure Parse_NMEA_SInt8(const AIndex: Byte; const ASInt8: PSInt8);
     procedure Parse_NMEA_Time(const AIndex: Byte; const ATime: PNMEA_Time);
@@ -100,6 +102,8 @@ type
   public
     function Get_NMEAPart_By_Index(const AIndex: Byte): String;
     function Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: String): DWORD;
+    // initialize special counters
+    procedure InitSpecialNmeaCounters;
     // enable subcode
     procedure Enable_Proprietaries_SubCode(const ACode: Tgpms_Code; const ASubCode: Word);
     // check subcode enabled
@@ -314,6 +318,15 @@ begin
     Result:=''
   else
     Result:=Self[AIndex];
+end;
+
+procedure Tvsagps_parser_nmea.InitSpecialNmeaCounters;
+begin
+  FGSVNmeaCounterGP:=0;
+  FGSVNmeaCounterGL:=0;
+  FGSVNmeaPrevGSVGP:=0;
+  FGSVNmeaPrevGSVGL:=0;
+  FGNGSANmeaCounter:=0;
 end;
 
 function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Base_Sentence(const ANmeaBaseString: String; const AProprietaryWithoutFinisher: Boolean): DWORD;
@@ -531,9 +544,22 @@ var
   i,k: Byte;
 begin
   Result:=0;
+
   // fill data
   h.dwSize:=sizeof(h);
   Parse_NMEA_TalkerID(ATalkerID, @(h.chTalkerID));
+
+  // check talker_id for GNSS (mixed)
+  if SameText(ATalkerID, nmea_ti_GNSS) then begin
+    // GNGSA - several constellates (contig. GNGSA sent.)
+    Inc(FGNGSANmeaCounter);
+    // define corrected talker_id after satellites parser (see bellow)
+  end else begin
+    // xxGSA - single constellate
+    FGNGSANmeaCounter:=0;
+    // copy original talker_id
+    h.chCorrectedTalkerID:=h.chTalkerID;
+  end;
 
   // 1) Selection mode
   Parse_NMEA_Char(0, @(h.sel_mode));
@@ -555,7 +581,7 @@ begin
 
   for i := 0 to k-1 do begin
     // i=0 - index=2 // i=11 - index=13
-    Parse_NMEA_SatID(2+i, h.sat_fix.sats[i].svid, h.sat_fix.sats[i].normalized_flag);
+    Parse_NMEA_SatID(2+i, @(h.sat_fix.sats[i]));
   end;
 
   // 15) PDOP in meters
@@ -564,6 +590,26 @@ begin
   Parse_NMEA_Float32(Self.Count-2, @(h.hdop));
   // 17) VDOP in meters
   Parse_NMEA_Float32(Self.Count-1, @(h.vdop));
+
+  // define corrected talker_id for GNGSA
+  if (0<>FGNGSANmeaCounter) then begin
+    // check first satellite id
+    if (h.sat_fix.sats[0].svid>0) then begin
+      // sat_id available
+      if (h.sat_fix.sats[0].svid>cVSAGPS_Constellation_GLONASS_SatID) then
+        Parse_NMEA_TalkerID(nmea_ti_GLONASS, @(h.chCorrectedTalkerID))
+      else
+        Parse_NMEA_TalkerID(nmea_ti_GPS, @(h.chCorrectedTalkerID));
+    end else begin
+      // no sat_id available - check by index (GPS, GLONASS, ...)
+      if (1=FGNGSANmeaCounter) then
+        Parse_NMEA_TalkerID(nmea_ti_GPS, @(h.chCorrectedTalkerID))
+      else if (2=FGNGSANmeaCounter) then
+        Parse_NMEA_TalkerID(nmea_ti_GLONASS, @(h.chCorrectedTalkerID))
+      else
+        Parse_NMEA_TalkerID('', @(h.chCorrectedTalkerID)); // unknown!
+    end;
+  end;
 
   // call handler
   if Assigned(FOnGSA) then
@@ -790,7 +836,7 @@ end;
 procedure Tvsagps_parser_nmea.Parse_NMEA_GSV_INFO(const AIndex: Byte; const AGSV_INFO: PNMEA_GSV_INFO);
 begin
   // 4 = AIndex+0) satellite number
-  Parse_NMEA_SatID(AIndex, AGSV_INFO^.sat_info.svid, AGSV_INFO^.sat_info.normalized_flag);
+  Parse_NMEA_SatID(AIndex, @(AGSV_INFO^.sat_info));
   // 5 = AIndex+1) elevation in degrees
   Parse_NMEA_SInt16(AIndex+1, @(AGSV_INFO^.sat_ele));
   // 6 = AIndex+2) azimuth in degrees to true
@@ -799,11 +845,11 @@ begin
   Parse_NMEA_SInt16(AIndex+3, @(AGSV_INFO^.snr));
 end;
 
-procedure Tvsagps_parser_nmea.Parse_NMEA_SatID(const AIndex: Byte; var ASatID: SInt8; var ASatIdNormalizedFlag: Byte);
+procedure Tvsagps_parser_nmea.Parse_NMEA_SatID(const AIndex: Byte; const APtrSatID: PVSAGPS_FIX_SAT);
   procedure _SetNoData;
   begin
-    ASatID:=-1;
-    ASatIdNormalizedFlag:=cGPS_SatID_Not_Normalized;
+    APtrSatID^.svid:=-1;
+    APtrSatID^.constellation_flag:=0;
   end;
 var
   s: String;
@@ -811,7 +857,7 @@ begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
   try
-    ASatID:=NormalizeSatelliteID(StrToInt(s), ASatIdNormalizedFlag);
+    APtrSatID^:=Prep_TVSAGPS_FIX_SAT(StrToInt(s));
   except
     _SetNoData;
   end else begin

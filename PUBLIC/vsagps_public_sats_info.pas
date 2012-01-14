@@ -29,7 +29,7 @@ implementation
 function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): String;
 begin
   Result := IntToHex(Byte(bsp^.sat_info.svid),2)+
-            IntToHex(Byte(bsp^.sat_info.normalized_flag),2)+
+            IntToHex(Byte(bsp^.sat_info.constellation_flag),2)+
             IntToHex(Word(bsp^.snr),4)+
             IntToHex(Byte(bsp^.status),2)+
             IntToHex(Byte(bsp^.flags),2)+
@@ -89,7 +89,7 @@ var
   begin
     // set current item
     _HexToByte(item,  1, Byte(pfix^.sats[pfix^.fix_count].svid));
-    _HexToByte(item,  3, pfix^.sats[pfix^.fix_count].normalized_flag);
+    _HexToByte(item,  3, pfix^.sats[pfix^.fix_count].constellation_flag);
     _HexToWord(item,  5, Word(psky^.entries[pfix^.fix_count].single_fix.snr));
     _HexToByte(item,  9, psky^.entries[pfix^.fix_count].single_fix.status);
     _HexToByte(item, 11, psky^.entries[pfix^.fix_count].single_fix.flags);

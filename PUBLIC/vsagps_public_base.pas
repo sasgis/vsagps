@@ -51,18 +51,22 @@ const
 
   cGPS_Invalid_SatNumber = -1;
 
-  cGPS_SatID_Not_Normalized      = $00;
-  cGPS_SatID_Normalized_SBAS     = $01;
-  cGPS_SatID_Normalized_GLONASS  = $02;
-  cGPS_SatID_Normalized_SBAS_PRN = $04;
-
   // talker identifiers (always in uppercase!)
   nmea_ti_CC          = 'CC'; // for COMPUTER
   nmea_ti_GPS         = 'GP'; // for US NavStar GPS
   nmea_ti_GLONASS     = 'GL'; // for Russian GLONASS
-  nmea_ti_GPS_GLONASS = 'GN'; // for US NavStar GPS + Russian GLONASS simultaneously
+  nmea_ti_QZSS        = 'QZ'; // for Japanese QZSS
+  nmea_ti_GNSS        = 'GN'; // MIXED: GPS + GLONASS ( + QZSS) simultaneously
   nmea_ti_MagComp     = 'HC'; // Heading – Magnetic Compass
-  
+
+  // glonass satellites from 65 and above
+  cVSAGPS_Constellation_GLONASS_SatID = 64;
+  // The SBAS system includes WAAS, EGNOS, and MTSAT satellites.
+  // The SBAS system PRN numbers are 120-138
+  // 120-138 should be unmapped
+  // 33-64 should be unmapped to 1-32  // SBAS (Satellite Based Augmentation System) satellites
+  // for GLONASS 65-96
+
   cNmea_knot_to_kmph = 1.852;
   cNmea_min_fix_sat_count=12;
   cNmea_max_sat_count=32;
@@ -136,7 +140,7 @@ type
 
   TVSAGPS_FIX_SAT = packed record {size=2}
     svid: SInt8; // space vehicle identification (1-32)  // "<0" means "no data"
-    normalized_flag: Byte; // how to map sat numbers above 32 to "normal" range 01-32 - see cGPS_SatID_* constants
+    constellation_flag: Byte; // constellation mapping index - reserved
   end;
   PVSAGPS_FIX_SAT = ^TVSAGPS_FIX_SAT;
 
@@ -208,16 +212,15 @@ function SatAvailableForShow(const ASatelliteID: SInt8;
                              const ASignalToNoiseRatio: SInt16;
                              const AStatus: Byte): Boolean;
 
-function GetSatNumberIndex(p: PVSAGPS_FIX_ALL; pSatInfo: PVSAGPS_FIX_SAT): ShortInt;
+// search sat_id in list of fixed sats
+function GetSatNumberIndexEx(p: PVSAGPS_FIX_SATS; const pSatInfo: PVSAGPS_FIX_SAT; var result_index: ShortInt): Boolean;
 
-// do number normalization
-function NormalizeSatelliteID(const ASatIDFromDevice: Integer; var ASatIdNormalizedFlag: Byte): SInt8;
-
-// search for flag
-function SatList_Has_Normalized(p: PVSAGPS_FIX_SATS; const ASatIdNormalizedFlag: Byte): Boolean;
+// get talker_id for GNxxx
+function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): String;
 
 // for functions calls
-function Make_TVSAGPS_FIX_SAT(const ASatelliteID: SInt8; const ASatIdNormalizedFlag: Byte): TVSAGPS_FIX_SAT;
+function Make_TVSAGPS_FIX_SAT(const ASatelliteID: SInt8; const AConstellationFlag: Byte): TVSAGPS_FIX_SAT;
+function Prep_TVSAGPS_FIX_SAT(const ASatIDFromDevice: Integer): TVSAGPS_FIX_SAT;
 
 // string to talker_id
 procedure Parse_NMEA_TalkerID(const ATalkerID: String; p: PNMEA_TalkerID);
@@ -267,6 +270,7 @@ end;
 function GetSatNumberIndexEx(p: PVSAGPS_FIX_SATS; const pSatInfo: PVSAGPS_FIX_SAT; var result_index: ShortInt): Boolean;
 var i: Byte;
 begin
+  if (nil<>p) then
   for i:= 0 to p^.fix_count - 1 do
   if (pSatInfo^.svid = p^.sats[i].svid) then begin
     result_index:=i;
@@ -276,62 +280,30 @@ begin
   Result:=FALSE;
 end;
 
-function GetSatNumberIndex(p: PVSAGPS_FIX_ALL; pSatInfo: PVSAGPS_FIX_SAT): ShortInt;
+function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): String;
 begin
-  if (pSatInfo<>nil) and (0<pSatInfo^.svid) then begin
-    if (cGPS_SatID_Normalized_GLONASS = pSatInfo^.normalized_flag) then begin
-      // glonass
-      if GetSatNumberIndexEx(@(p^.gl), pSatInfo, Result) then
-        Exit;
-    end else begin
-      // gps
-      if GetSatNumberIndexEx(@(p^.gp), pSatInfo, Result) then
-        Exit;
-    end;
-  end;
-  Result:=-1;
-end;
-
-function NormalizeSatelliteID(const ASatIDFromDevice: Integer; var ASatIdNormalizedFlag: Byte): SInt8;
-begin
-  // The SBAS system includes WAAS, EGNOS, and MTSAT satellites.
-  // The SBAS system PRN numbers are 120-138
-  // 120-138 should be unmapped
-  // 33-64 should be unmapped to 1-32  // SBAS (Satellite Based Augmentation System) satellites
-  // for GLONASS 65-96
-  if ($FF=ASatIDFromDevice) or (0=ASatIDFromDevice) or (-1=ASatIDFromDevice) then begin
-    Result:=SInt8(LOBYTE(ASatIDFromDevice));
-    ASatIdNormalizedFlag:=cGPS_SatID_Not_Normalized;
-  end else if (ASatIDFromDevice>119) then begin
-    Result:=SInt8(LOBYTE(ASatIDFromDevice-119));
-    ASatIdNormalizedFlag:=cGPS_SatID_Normalized_SBAS_PRN;
-  end else if (ASatIDFromDevice>64) then begin
-    Result:=SInt8(LOBYTE(ASatIDFromDevice-64));
-    ASatIdNormalizedFlag:=cGPS_SatID_Normalized_GLONASS;
-  end else if (ASatIDFromDevice>32) then begin
-    Result:=SInt8(LOBYTE(ASatIDFromDevice-32));
-    ASatIdNormalizedFlag:=cGPS_SatID_Normalized_SBAS;
-  end else begin
-    Result:=SInt8(LOBYTE(ASatIDFromDevice));
-    ASatIdNormalizedFlag:=cGPS_SatID_Not_Normalized;
-  end;
-end;
-
-function SatList_Has_Normalized(p: PVSAGPS_FIX_SATS; const ASatIdNormalizedFlag: Byte): Boolean;
-var i: Byte;
-begin
-  for i:= 0 to p^.fix_count - 1 do
-  if (ASatIdNormalizedFlag = p^.sats[i].normalized_flag) then begin
-    Result:=TRUE;
+  if (nil<>p) then
+  if (0<p.all_count) then begin
+    // check only first sat
+    if (p.sats[0].svid>cVSAGPS_Constellation_GLONASS_SatID) then
+      Result := nmea_ti_GLONASS
+    else
+      Result := nmea_ti_GPS;
     Exit;
   end;
-  Result:=FALSE;
+  Result:='';
 end;
 
-function Make_TVSAGPS_FIX_SAT(const ASatelliteID: SInt8; const ASatIdNormalizedFlag: Byte): TVSAGPS_FIX_SAT;
+function Make_TVSAGPS_FIX_SAT(const ASatelliteID: SInt8; const AConstellationFlag: Byte): TVSAGPS_FIX_SAT;
 begin
   Result.svid:=ASatelliteID;
-  Result.normalized_flag:=ASatIdNormalizedFlag;
+  Result.constellation_flag:=AConstellationFlag;
+end;
+
+function Prep_TVSAGPS_FIX_SAT(const ASatIDFromDevice: Integer): TVSAGPS_FIX_SAT;
+begin
+  Result.svid:=SInt8(LOBYTE(ASatIDFromDevice));
+  Result.constellation_flag:=0;
 end;
 
 procedure Parse_NMEA_TalkerID(const ATalkerID: String; p: PNMEA_TalkerID);
@@ -347,7 +319,10 @@ end;
 
 function NMEA_TalkerID_to_String(const p: PNMEA_TalkerID): String;
 begin
-  Result:=p^[0]+p^[1];
+  if (#0=p^[0]) then
+    Result:=''
+  else
+    Result:=p^[0]+p^[1];
 end;
 
 function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: String): PVSAGPS_FIX_SATS;

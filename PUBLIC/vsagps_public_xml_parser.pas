@@ -966,7 +966,7 @@ begin
   VDOMDocument:=nil;
   try
     // create doc using available factories (raise error if no xml vendors)
-    if VSAGPS_Create_DOMDocument(VDOMDocument, TRUE) then
+    if VSAGPS_Create_DOMDocument(VDOMDocument, TRUE, 1) then
     try
       // load from stream or from file and then parse doc
       if _LoadDoc then

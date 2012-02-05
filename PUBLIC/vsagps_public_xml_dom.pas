@@ -32,7 +32,7 @@ type
 {$ifend}
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
-function VSAGPS_Create_DOMDocument(var ADOMDocument: IDOMDocument; const ARaiseErrorIfFALSE: Boolean): Boolean;
+function VSAGPS_Create_DOMDocument(var ADOMDocument: IDOMDocument; const ARaiseErrorIfFALSE: Boolean; const ASetValidationMode: Byte=0): Boolean;
 {$ifend}
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
@@ -42,7 +42,22 @@ function VSAGPS_Load_DOMDocument_FromStream(const ADOMDocument: IDOMDocument; co
 implementation
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
-function VSAGPS_Create_DOMDocument(var ADOMDocument: IDOMDocument; const ARaiseErrorIfFALSE: Boolean): Boolean;
+function VSAGPS_Create_DOMDocument(var ADOMDocument: IDOMDocument; const ARaiseErrorIfFALSE: Boolean; const ASetValidationMode: Byte): Boolean;
+
+  procedure _CheckValidationMode;
+  var VDOMParseOptions: IDOMParseOptions;
+  begin
+    {ASetValidationMode: 0 - nothing, 1 - force set FALSE, 2 - force set TRUE}
+    if (0<>ASetValidationMode) then
+    if Assigned(ADOMDocument) then
+    try
+      VDOMParseOptions := ADOMDocument as IDOMParseOptions;
+      if Assigned(VDOMParseOptions) then begin
+        VDOMParseOptions.validate:=((ASetValidationMode-1)<>0);
+      end;
+    except
+    end;
+  end;
 begin
   Result:=FALSE;
 
@@ -59,6 +74,8 @@ begin
   if (not Assigned(ADOMDocument)) then
   try
     ADOMDocument:=MSXML_DOM.DOMImplementation.createDocument('','',nil);
+    // reset validation mode only for msxml
+    _CheckValidationMode;
     Inc(Result);
   except
   end;

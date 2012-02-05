@@ -21,6 +21,7 @@ uses
 {$if defined(VSAGPS_USE_MSXML_IMPORT)}
   msxmldom,
 {$ifend}
+  XMLConst,
   Classes;
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
@@ -70,7 +71,10 @@ end;
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_Load_DOMDocument_FromStream(const ADOMDocument: IDOMDocument; const AStream: TStream; const ARaiseErrorIfFALSE: Boolean): Boolean;
-var VDOMPersist: IDOMPersist;
+var
+  VDOMPersist: IDOMPersist;
+  VParseError: IDOMParseError;
+  VMsg: String;
 begin
   Result:=FALSE;
   VDOMPersist:=nil;
@@ -87,8 +91,22 @@ begin
     VDOMPersist:=nil;
   end;
 
-  if ARaiseErrorIfFALSE and (not Result) then
-    raise EVSAGPS_Error_Loading_XML.Create('');
+  if ARaiseErrorIfFALSE and (not Result) then begin
+    VMsg:='';
+    VParseError:=nil;
+    try
+      // see TXMLDocument.LoadData
+      VParseError := ADOMDocument as IDOMParseError;
+      with VParseError do
+        VMsg := Format('%s%s%s: %d%s%s', [Reason, SLineBreak, SLine, Line, SLineBreak, Copy(SrcText, 1, 40)]);
+    except
+    end;
+    // raise
+    {if (0<Length(VMsg)) and Assigned(VParseError) then
+      raise EDOMParseError.Create(VParseError, VMsg)
+    else}
+      raise EVSAGPS_Error_Loading_XML.Create(VMsg);
+  end;
 end;
 {$ifend}
 

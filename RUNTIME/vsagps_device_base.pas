@@ -58,6 +58,10 @@ type
     FAutodetectObject: TObject;
     // Request commands
     FRequestGPSCommand_Apply_UTCDateTime: Boolean;
+    // Used packet type
+    FDefaultPacketType: DWORD;
+    // check timeout or don't check
+    FForceInfiniteTimeout: Boolean;
   private
     // connect to gps device
     function WorkingThread_ConnectToDevice: Boolean;
@@ -134,6 +138,10 @@ type
     property GPSDeviceHandle: THandle read FGPSDeviceHandle;
     property GPSDeviceType: DWORD read FGPSDeviceType;
     property FinishReason: DWORD read FWT_Params.dwFinishReason;
+
+    property ForceInfiniteTimeout: Boolean read FForceInfiniteTimeout;
+
+    property DefaultPacketType: DWORD read FDefaultPacketType write FDefaultPacketType;
   end;
 
 {$if not defined(USE_NMEA_VTG)}
@@ -237,6 +245,8 @@ end;
 constructor Tvsagps_device_base.Create;
 begin
   //inherited Create;
+  FForceInfiniteTimeout:=FALSE;
+  FDefaultPacketType:=vgpt_Allow_Stats;
   FUNIT_INFO_CS:=nil;
   InternalResetRequestGPSCommand;
   SetBaseParams(0,0,nil,'',nil,nil,nil,nil,nil);
@@ -681,7 +691,7 @@ end;
 function Tvsagps_device_with_nmea.FParser_FOnGGA(const p: PNMEA_GGA): DWORD;
 begin
   if Assigned(FALLDeviceParams^.pNMEA_GGA_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_GGA_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_GGA_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
     Result:=0;
 end;
@@ -689,7 +699,7 @@ end;
 function Tvsagps_device_with_nmea.FParser_FOnGLL(const p: PNMEA_GLL): DWORD;
 begin
   if Assigned(FALLDeviceParams^.pNMEA_GLL_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_GLL_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_GLL_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
     Result:=0;
 end;
@@ -697,7 +707,7 @@ end;
 function Tvsagps_device_with_nmea.FParser_FOnGSA(const p: PNMEA_GSA): DWORD;
 begin
   if Assigned(FALLDeviceParams^.pNMEA_GSA_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_GSA_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_GSA_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
     Result:=0;
 end;
@@ -705,7 +715,7 @@ end;
 function Tvsagps_device_with_nmea.FParser_FOnGSV(const p: PNMEA_GSV): DWORD;
 begin
   if Assigned(FALLDeviceParams^.pNMEA_GSV_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_GSV_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_GSV_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
     Result:=0;
 end;
@@ -713,7 +723,7 @@ end;
 function Tvsagps_device_with_nmea.FParser_FOnRMC(const p: PNMEA_RMC): DWORD;
 begin
   if Assigned(FALLDeviceParams^.pNMEA_RMC_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_RMC_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_RMC_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
     Result:=0;
 end;
@@ -722,7 +732,7 @@ function Tvsagps_device_with_nmea.FParser_FOnVTG(const p: PNMEA_VTG): DWORD;
 begin
 {$if defined(USE_NMEA_VTG)}
   if Assign(FALLDeviceParams^.pNMEA_VTG_HANDLER) then
-    Result:=FALLDeviceParams^.pNMEA_VTG_HANDLER(InternalGetUserPointer, FUnitIndex, 0, p)
+    Result:=FALLDeviceParams^.pNMEA_VTG_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
   else
 {$ifend}
     Result:=0;

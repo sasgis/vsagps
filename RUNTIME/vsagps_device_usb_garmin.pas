@@ -305,7 +305,7 @@ end;
 function Tvsagps_device_usb_garmin.ParsePacket(const ABuffer: Pointer): DWORD;
 begin
   // inherited;
-  Result:=Parse_GarminPVT_Packets(ABuffer, vgpt_Allow_Stats)
+  Result:=Parse_GarminPVT_Packets(ABuffer, FDefaultPacketType)
 end;
 
 function Tvsagps_device_usb_garmin.SendPacket(const APacketBuffer: Pointer;

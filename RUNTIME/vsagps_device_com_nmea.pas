@@ -39,6 +39,7 @@ type
     FParser: Tvsagps_parser_nmea;
     FNMEABuffer: array [0..cNmea_Buffer_Size-1] of char;
     FGlobalNmeaBuffer: String;
+    FDCB_Str_Info_A: AnsiString;
     FSavedUTCDateTime: TNMEA_Date_Time;
   private
     procedure Internal_Query_GPSDeviceName;
@@ -120,6 +121,7 @@ begin
   FParser.FOnVTG:=FParser_FOnVTG;
 {$ifend}
 
+  FDCB_Str_Info_A:='';
   FGlobalNmeaBuffer:='';
   FUserIni:=nil;
   InternalLoadUserIni;
@@ -219,6 +221,14 @@ var
 
 begin
   inherited;
+
+  // set DCB info as string
+  if (gpsc_Set_DCB_Str_Info_A = ACommand) then
+  if (nil<>APointer) then begin
+    SetString(FDCB_Str_Info_A, PAnsiChar(APointer), StrLen(PAnsiChar(APointer)));
+    FDCB_Str_Info_A:=Trim(FDCB_Str_Info_A);
+    Exit;
+  end;
 
   // for some predefined commands and for all user commands check ini for packets
   if (gpsc_Reset_DGPS = ACommand) then
@@ -970,29 +980,53 @@ function Tvsagps_device_com_nmea.WorkingThread_StartSession: Boolean;
 var
   d: TDCB;
   t: TCommTimeouts;
+  VModifyParams: Boolean;
+  VModifyTimeout: Boolean;
 
-  function _ModifyParams: Boolean;
+  function _GetCommParams: Boolean;
   begin
-    Result:=TRUE; // always set
-    
-    // BaudRate
-    if (nil<>FThisDeviceParams) and (0<FThisDeviceParams^.iBaudRate) then
-      d.BaudRate:=FThisDeviceParams^.iBaudRate
-    else if (nil<>FALLDeviceParams) and (0<FALLDeviceParams^.iBaudRate) then
-      d.BaudRate:=FALLDeviceParams^.iBaudRate;
-
-    // do not abort on errors - mask $4000 in flags (fAbortOnError=FALSE)
-    if (d.Flags and $4000) <> 0 then
-      d.Flags := d.Flags - $4000;
+    // Build DCB from FDCB_Str_Info or
+    d.DCBlength:=sizeof(d);
+    if (0<Length(FDCB_Str_Info_A)) then begin
+      // build DCB from FDCB_Str_Info
+      Result:=(BuildCommDCBA(PAnsiChar(FDCB_Str_Info_A), d)<>FALSE);
+      // always set
+      VModifyParams:=TRUE;
+    end else begin
+      // get it from device
+      Result:=(GetCommState(FGPSDeviceHandle, d)<>FALSE);
+    end;
   end;
 
-  function _ModifyTimeouts: Boolean;
+  procedure _FillCommParams;
   begin
-    Result:=TRUE; // always set
+    // BaudRate
+    if (nil<>FThisDeviceParams) and (0<FThisDeviceParams^.iBaudRate) then begin
+      if (d.BaudRate<>DWORD(FThisDeviceParams^.iBaudRate)) then begin
+        d.BaudRate:=FThisDeviceParams^.iBaudRate;
+        VModifyParams:=TRUE;
+      end;
+    end else if (nil<>FALLDeviceParams) and (0<FALLDeviceParams^.iBaudRate) then begin
+      if (d.BaudRate<>DWORD(FALLDeviceParams^.iBaudRate)) then begin
+        d.BaudRate:=FALLDeviceParams^.iBaudRate;
+        VModifyParams:=TRUE;
+      end;
+    end;
+
+    // do not abort on errors - mask $4000 in flags (fAbortOnError=FALSE)
+    if (d.Flags and $4000) <> 0 then begin
+      d.Flags := d.Flags - $4000;
+      VModifyParams:=TRUE;
+    end;
+  end;
+
+  procedure _FillCommTimeouts;
+  begin
+    VModifyTimeout:=TRUE; // always set
     // in milliseconds
     t.ReadIntervalTimeout:=MAXDWORD;
     t.ReadTotalTimeoutMultiplier:=MAXDWORD;
-    
+
     t.ReadTotalTimeoutConstant:=GetReceiveGPSTimeoutSec(FALLDeviceParams, FThisDeviceParams);
     t.ReadTotalTimeoutConstant:=t.ReadTotalTimeoutConstant*1000;
 
@@ -1012,27 +1046,30 @@ begin
   // try to obtain user-frendly device name
   Internal_Query_GPSDeviceName;
 
-  // set params
-  // get-modify-set comm params
-  d.DCBlength:=sizeof(d);
-  Result:=GetCommState(FGPSDeviceHandle, d);
-  if (not Result) then begin
-    FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
-    Exit;
-  end;
-  if _ModifyParams then begin
-    Result:=SetCommState(FGPSDeviceHandle, d);
-    if (not Result) then begin
-      FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
-      Exit;
-    end;
-  end;
-
   // set buffers
   Result:=SetupComm(FGPSDeviceHandle, cNmea_Buffer_Size, cNmea_Buffer_Size);
   if (not Result) then begin
     FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
     Exit;
+  end;
+
+  // set params
+  VModifyParams:=FALSE;
+  VModifyTimeout:=FALSE;
+
+  // get-modify-set comm params
+  Result:=_GetCommParams;
+  if (not Result) then begin
+    FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+    Exit;
+  end;
+  _FillCommParams;
+  if VModifyParams then begin
+    Result:=SetCommState(FGPSDeviceHandle, d);
+    if (not Result) then begin
+      FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+      Exit;
+    end;
   end;
 
   // get-modify-set timeouts
@@ -1041,14 +1078,15 @@ begin
     FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
     Exit;
   end;
-  if _ModifyTimeouts then begin
+  _FillCommTimeouts;
+  if VModifyTimeout then begin
     Result:=SetCommTimeouts(FGPSDeviceHandle, t);
     if (not Result) then begin
       FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
       Exit;
     end;
   end;
-
+  
   // set Communicating flag
   if (0=FGPSDeviceSessionStarted) then
     FGPSDeviceSessionStarted:=1;

@@ -107,6 +107,7 @@ const
   gpsc_Reset_DGPS          = $00000001; // from DGPS panel
   gpsc_Apply_UTCDateTime   = $00000002; // apply time from gps to system
   gpsc_Refresh_GPSUnitInfo = $00000004; // recreate unit info
+  gpsc_Set_DCB_Str_Info_A  = $00000008; // set DCB info for comm (ansi only)
   gpsc_LocalTimeChanged    = $00001001; // Notify GPS that Local time is changed
   gpsc_RestartTrackLogs    = $00001002; // Close current and open new files for all recording tracks
   gpsc_WriteFileLinkToLog  = $00001004; // Write specified filename to tracklog

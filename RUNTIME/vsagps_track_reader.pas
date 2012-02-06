@@ -102,6 +102,8 @@ end;
 constructor Tvsagps_track_reader.Create(const APtrSourceFiles: PWideChar);
 begin
   inherited Create;
+  FDefaultPacketType:=(FDefaultPacketType and (not vgpt_Allow_Stats));
+  FForceInfiniteTimeout:=TRUE;
   Fparser_nmea:=nil;
   FCurrentFile:='';
   SafeSetWideStringP(FOriginalSourceFiles, APtrSourceFiles);
@@ -118,8 +120,6 @@ procedure Tvsagps_track_reader.InternalCreateNmeaParser;
 begin
   if (nil=Fparser_nmea) then begin
     Fparser_nmea:=Tvsagps_parser_nmea.Create;
-    Fparser_nmea.InitSpecialNmeaCounters;
-    Fparser_nmea.FOnApplyUTCDateTime:=nil;
     Fparser_nmea.FOnGGA:=FParser_FOnGGA;
     Fparser_nmea.FOnGLL:=FParser_FOnGLL;
     Fparser_nmea.FOnGSA:=FParser_FOnGSA;
@@ -558,7 +558,7 @@ end;
 
 procedure Tvsagps_track_reader.SleepInXMLParser;
 begin
-  Sleep(GetDeviceWorkerThreadTimeoutMSec(FALLDeviceParams, FThisDeviceParams));
+  Sleep(GetDeviceWorkerThreadTimeoutMSec(FALLDeviceParams, FThisDeviceParams) div 16);
 end;
 
 function Tvsagps_track_reader.WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean;

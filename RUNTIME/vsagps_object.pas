@@ -243,7 +243,9 @@ begin
         break;
       // check unit
       pUnit:=GPSUnits[queued_unit_index];
-      if (nil<>pUnit) and (gs_DoneConnected=pUnit^.eDevState) then begin
+      if (nil<>pUnit) and (gs_DoneConnected=pUnit^.eDevState) then
+      if (nil<>pUnit^.objDevice) then
+      if (not pUnit^.objDevice.ForceInfiniteTimeout) then begin
         // timeout
         dwWaitMSec:=GetReceiveGPSTimeoutSec(FALLDeviceParams, pUnit^.pDevParams);
         dwWaitMSec:=dwWaitMSec*1000;
@@ -407,6 +409,8 @@ begin
     end else if (gdt_COM_NMEA0183=(AGPSDevType and gdt_COM_NMEA0183)) then begin
       // com nmea
       p^.objDevice:=Tvsagps_device_com_nmea.Create;
+      // TODO: apply comm DCB params here - see BuildCommDCB (ansi only)
+      // p^.objDevice.ExecuteGPSCommand(gpsc_Set_DCB_Str_Info_A, PAnsiChar);
     end;
 
     if Assigned(p^.objDevice) then begin

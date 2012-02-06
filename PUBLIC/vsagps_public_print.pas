@@ -47,7 +47,11 @@ procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);
 
 implementation
 
-procedure do_after_to_str(var str_res: String);
+procedure do_after_to_str(var str_res: String; const fs: TFormatSettings);
+  function _DS(const aChr: Char): Boolean;
+  begin
+    Result:=((aChr=DecimalSeparator) or (aChr=fs.DecimalSeparator));
+  end;
 begin
   // del leading 0
   while (Length(str_res)>0) and (str_res[1]='0') do
@@ -57,10 +61,10 @@ begin
     SetLength(str_res,Length(str_res)-1);
   // del trailing period
   if (Length(str_res)>0) then
-    if (str_res[Length(str_res)]=DecimalSeparator) then
+    if _DS(str_res[Length(str_res)]) then
       SetLength(str_res,Length(str_res)-1);
   // if empty or leading period - add 0
-  if (Length(str_res)=0) or (str_res[1]=DecimalSeparator) then
+  if (Length(str_res)=0) or _DS(str_res[1]) then
     str_res:='0'+str_res;
 end;
 
@@ -82,7 +86,7 @@ begin
       else
         j:=f;
       Result:=FloatToStrF(j,ffFixed,18,8,fs);
-      do_after_to_str(Result);
+      do_after_to_str(Result,fs);
     end;
   end;
 end;
@@ -105,7 +109,7 @@ begin
       else
         j:=f;
       Result:=FloatToStrF(j,ffFixed,18,10,fs);
-      do_after_to_str(Result);
+      do_after_to_str(Result,fs);
     end;
   end;
 end;

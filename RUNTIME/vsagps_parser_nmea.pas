@@ -75,6 +75,7 @@ type
     FOnVTG: TOnVTGProc;
 {$ifend}
 
+    FFormatSettings: TFormatSettings;
     FProprietaries: array [Tgpms_Code] of TNmeaProprietary;
   protected
     function Internal_Parse_NmeaComm_Base_Sentence(const ANmeaBaseString: String;
@@ -100,6 +101,8 @@ type
     function Parse_and_Send_RMC_Data(const AData, ATalkerID: String): DWORD;
     function Parse_and_Send_VTG_Data(const AData, ATalkerID: String): DWORD;
   public
+    constructor Create;
+
     function Get_NMEAPart_By_Index(const AIndex: Byte): String;
     function Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: String): DWORD;
     // initialize special counters
@@ -129,7 +132,7 @@ function ExtractNmeaBaseString(const ANmeaFullString: String;
                                var AProprietaryWithoutFinisher: Boolean): Boolean;
 
 // parse nmea string coordinates (without symbol)
-procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord);
+procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
 
 implementation
 
@@ -246,7 +249,7 @@ begin
   end;
 end;
 
-procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord);
+procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
   procedure _SetNoData;
   begin
     ACoord^.deg:=$FF;
@@ -256,16 +259,8 @@ var
   p: Integer;
 
   procedure _MinutesToFloat(const s: String);
-  var
-    dc: Char;
   begin
-    dc:=DecimalSeparator;
-    try
-      DecimalSeparator:=cNmea_Point;
-      ACoord^.min:=StrToFloat(s);
-    finally
-      DecimalSeparator:=dc;
-    end;
+    ACoord^.min:=StrToFloat(s, fs);
   end;
 begin
   // 04321.0123
@@ -306,6 +301,24 @@ begin
 end;
 
 { Tvsagps_parser_nmea }
+
+constructor Tvsagps_parser_nmea.Create;
+begin
+  InitSpecialNmeaCounters;
+
+  FOnApplyUTCDateTime:=nil;
+  FOnGGA:=nil;
+  FOnGLL:=nil;
+  FOnGSA:=nil;
+  FOnGSV:=nil;
+  FOnRMC:=nil;
+{$if defined(USE_NMEA_VTG)}
+  FOnVTG:=nil;
+{$ifend}  
+
+  GetLocaleFormatSettings(GetThreadLocale, FFormatSettings);
+  FFormatSettings.DecimalSeparator:=cNmea_Point;
+end;
 
 procedure Tvsagps_parser_nmea.Enable_Proprietaries_SubCode(const ACode: Tgpms_Code; const ASubCode: Word);
 begin
@@ -780,7 +793,7 @@ begin
   // symbol
   Parse_NMEA_Char(AIndexSymbol, @(ACoord^.sym));
   // coord
-  NMEA_Parse_Coord(Get_NMEAPart_By_Index(AIndexCoord), ACoord);
+  NMEA_Parse_Coord(Get_NMEAPart_By_Index(AIndexCoord), ACoord, FFormatSettings);
 end;
 
 procedure Tvsagps_parser_nmea.Parse_NMEA_Date(const AIndex: Byte; const ADate: PNMEA_Date);
@@ -812,7 +825,6 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_Float32(const AIndex: Byte; const AFloa
     AFloat32^:=cGps_Float32_no_data;
   end;
 var
-  dc: Char;
   s: String;
 begin
   try
@@ -820,13 +832,8 @@ begin
     if (0=Length(s)) then begin
       _SetNoData;
     end else begin
-      dc:=DecimalSeparator;
-      try
-        DecimalSeparator:=cNmea_Point;
-        AFloat32^:=StrToFloat(s);
-      finally
-        DecimalSeparator:=dc;
-      end;
+      // parse string
+      AFloat32^:=StrToFloat(s, FFormatSettings);
     end;
   except
     _SetNoData;

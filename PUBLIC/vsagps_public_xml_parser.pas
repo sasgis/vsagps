@@ -163,6 +163,12 @@ function Get_ParseXML_FileExtType(const wczSourceFilenameExt: WideString): Tvsag
 function Get_ParseXML_FileType(const wczSourceFilename: WideString): Tvsagps_XML_source_format;
 
 {$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
+function VSAGPS_XML_DOMNodeValue(
+  const ADOMNode: IDOMNode;
+  const DenyUseTextFunc: Boolean = FALSE): WideString;
+{$ifend}
+
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
 function VSAGPS_LoadAndParseXML(const pUserObjPointer: Pointer;
                                 const pUserAuxPointer: Pointer;
                                 const wczSourceFilename: WideString;

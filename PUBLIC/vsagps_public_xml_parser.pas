@@ -674,6 +674,7 @@ var
               // strings
               if (nil=piWideStrings^.p_gpx_wpt_str) then
                 New(piWideStrings^.p_gpx_wpt_str);
+              V_sub_Value:=VSAGPS_XML_DOMNodeValue(ASubNode);
               piWideStrings^.p_gpx_wpt_str^.wpt_buffers[V_gpx_wpt_str]:=V_sub_Value;
               pData^.gpx_data.wpt_data.fStrs[V_gpx_wpt_str]:=PWideChar(piWideStrings^.p_gpx_wpt_str^.wpt_buffers[V_gpx_wpt_str]);
               Include(pData^.gpx_data.wpt_data.fAvail_wpt_strs, V_gpx_wpt_str);

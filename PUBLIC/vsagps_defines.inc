@@ -29,8 +29,8 @@
 {$define VSAGPS_ALLOW_IMPORT_GPX}
 {$ifend}
 
-//////{$if not defined(VSAGPS_IMPORT_KML_FORBIDDEN)}
-//////{$define VSAGPS_ALLOW_IMPORT_KML}
-//////{$ifend}
+{$if not defined(VSAGPS_IMPORT_KML_FORBIDDEN)}
+{$define VSAGPS_ALLOW_IMPORT_KML}
+{$ifend}
 
 {$ifend}

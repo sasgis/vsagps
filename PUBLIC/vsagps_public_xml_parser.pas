@@ -700,42 +700,51 @@ var
       xsf_KML: begin
         // parse kml tags
 (*
-        case pData^.kml_data.subitem_tag of
-          kml_
-        end;
-        //Result:=KML_get_tag_type(V_sub_Name, pData^.kml_data.subitem_tag);
-        //if Result then
-        case pData^.kml_data.subitem_tag of
-          kt_kml,
-          kt_Document,
-          kt_Folder,
-          kt_innerBoundaryIs,
-          kt_LinearRing,
-          kt_LineString,
-          kt_MultiGeometry,
-          kt_outerBoundaryIs,
-          kt_Placemark,
-          kt_Point,
-          kt_Polygon: begin
-            bRunForSubNode:=TRUE;
-          end;
-        end else begin
-          // all others - simple kml tags - parse here
-          if KML_subtag_str_type(V_sub_Name, V_kml_str) then begin
-            // set string value
-            if (nil=piWideStrings^.p_kml_params_str) then
-              New(piWideStrings^.p_kml_params_str);
-            piWideStrings^.p_kml_params_str^.kml_str_buffer[V_kml_str]:=VSAGPS_XML_NodeValue(ASubNode);
-            pData^.kml_data.fParamsStrs[V_kml_str]:=PWideChar(piWideStrings^.p_kml_params_str^.kml_str_buffer[V_kml_str]);
-            Include(pData^.kml_data.fAvail_strs, V_kml_str);
-          end else begin
-            // set typed value
-          end;
-        end;
+<Folder id="FeatureLayer0">
+<name>World Imagery</name>
+<description><![CDATA[This map presents low-resolution imagery for the world and high-resolution imagery for the United States and other areas around the world. The map includes NASA Blue Marble: Next Generation 500m resolution imagery at small scales (above 1:1,000,000), i-cubed 15m eSAT imagery at medium-to-large scales (down to 1:70,000) for the world, and USGS 15m Landsat imagery for Antarctica.  The map features i-cubed Nationwide Prime 1m or better resolution imagery for the contiguous United States, Getmapping 1m resolution imagery for Great Britain, AeroGRID 1m to 2m resolution imagery for several countries in Europe, IGN 1m resolution imagery for Spain, IGP 1m resolution imagery for Portugal, and GeoEye IKONOS 1m resolution imagery for Hawaii, parts of Alaska, and several hundred metropolitan areas around the world.  Additionally, imagery contributed by the GIS User Community has been added in Alaska, New York and Virginia.
+i-cubed Nationwide Prime is a seamless, color  mosaic of various commercial and government imagery sources, including Aerials Express 0.3 to 0.6m resolution imagery for metropolitan areas and the best  available United States Department of Agriculture (USDA) National Agriculture Imagery Program (NAIP) imagery and enhanced versions of United States Geological Survey (USGS) Digital Ortho Quarter Quad (DOQQ) imagery for other areas.
+For more information on this map, visit us online at http://goto.arcgisonline.com/maps/World_Imagery]]>
+</description>
+
+<Placemark id="ID_00000">
+<name>Bucharest 20000211</name>
+<description><![CDATA[<html><body><table border="1"><tr><th>Field Name</th><th>Field Value</th></tr><tr><td>SRC_DATE</td><td>20000211</td></tr><tr><td>SRC_RES</td><td>1</td></tr><tr><td>SRC_ACC</td><td>25.3999996185</td></tr><tr><td>SRC_DESC</td><td>Ikonos</td></tr><tr><td>NICE_NAME</td><td>Bucharest</td></tr><tr><td>NICE_DESC</td><td>GeoEye</td></tr></table></body></html>]]>
+</description>
+<styleUrl>#PolyStyle00</styleUrl>
+
+
+<Style>
+<LineStyle>
+<color>A6000080</color>
+<width>2</width>
+</LineStyle>
+<PolyStyle>
+<color>33FFFFFF</color>
+<fill>1</fill>
+</PolyStyle>
+</Style>
 
 *)
+        //case pData^.kml_data.current_tag of
+        //kml_Folder,kml_Placemark: begin
+          // headers - Folder and Placemark here - strings only
+          if KML_subtag_str_type(V_sub_Name, V_kml_str) then begin
+            // strings
+            if (nil=piWideStrings^.p_kml_params_str) then
+              New(piWideStrings^.p_kml_params_str);
+            piWideStrings^.p_kml_params_str^.kml_params_buffers[V_kml_str]:=VSAGPS_XML_DOMNodeValue(ASubNode);
+            pData^.kml_data.fParamsStrs[V_kml_str]:=PWideChar(piWideStrings^.p_kml_params_str^.kml_params_buffers[V_kml_str]);
+            Include(pData^.kml_data.fAvail_strs, V_kml_str);
+          end else begin
+            // others (params) - empty
+          end;
+        //end;
+
+        //end;
       end;
 {$ifend}
+
       xsf_XML: begin
         // parse all tags - EMPTY
       end;  

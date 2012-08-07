@@ -977,7 +977,7 @@ begin
   if bInitUninit then
     res:=CoInitializeEx(nil, COINIT_MULTITHREADED)
   else
-    res:=0;
+    res:=RPC_E_CHANGED_MODE;
 
   VDOMDocument:=nil;
   try
@@ -993,7 +993,7 @@ begin
     end;
   finally
     if bInitUninit then
-    if (S_OK=res) or (S_FALSE=res) or (RPC_E_CHANGED_MODE=res) then
+    if (S_OK=res) or (S_FALSE=res) or Succeeded(res) then
     CoUninitialize;
 
     if bOK and (not V_px_state.aborted_by_user) then

@@ -104,7 +104,12 @@ begin
     Unlock_CS_State;
   end;
   // kill object
-  FreeAndNil(FPacketThread);
+  EnterCriticalSection(FCS_CloseHandle);
+  try
+    FreeAndNil(FPacketThread);
+  finally
+    LeaveCriticalSection(FCS_CloseHandle);
+  end;
   FreeAndNil(FPacketQueue);
   inherited Destroy;
 end;
@@ -458,7 +463,12 @@ end;
 
 procedure Tvsagps_object.InternalOnPacketThreadTerminate(Sender: TObject);
 begin
-  FPacketThread:=nil;
+  EnterCriticalSection(FCS_CloseHandle);
+  try
+    FPacketThread:=nil;
+  finally
+    LeaveCriticalSection(FCS_CloseHandle);
+  end;
 end;
 
 { Tvsagps_Packet_Thread }

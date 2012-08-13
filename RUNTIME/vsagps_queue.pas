@@ -60,10 +60,11 @@ type
 
 implementation
 
-{$if not defined(USE_SIMPLE_CLASSES)}
 uses
-  vsagps_memory;
+{$if not defined(USE_SIMPLE_CLASSES)}
+  vsagps_memory,
 {$ifend}
+  vsagps_public_debugstring;
 
 { Tvsagps_queue }
 
@@ -74,11 +75,23 @@ var
   x: Pvsagps_stdlist_item;
 {$ifend}
 begin
-  if FDenyAdd then
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_queue.AppendGPSPacket: begin');
+{$ifend}
+
+  if FDenyAdd then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_queue.AppendGPSPacket: exit');
+{$ifend}
     Exit;
+  end;
+
   dw:=uindex;
   EnterCriticalSection(FCS);
   try
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_queue.AppendGPSPacket: add');
+{$ifend}
 {$if defined(USE_SIMPLE_CLASSES)}
     InternalAppendItem(p, Pointer(dw));
 {$else}
@@ -89,6 +102,9 @@ begin
 {$ifend}
   finally
     LeaveCriticalSection(FCS);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_queue.AppendGPSPacket: end');
+{$ifend}
   end;
 end;
 
@@ -117,10 +133,15 @@ var
   x: Pvsagps_stdlist_item;
 {$ifend}
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_queue.ExtractGPSPacket: begin');
+{$ifend}
+
   Result:=FALSE;
   p:=nil;
   if (nil=Self) then
     Exit;
+
   EnterCriticalSection(FCS);
   try
 {$if defined(USE_SIMPLE_CLASSES)}
@@ -136,6 +157,9 @@ begin
 {$ifend}
   finally
     LeaveCriticalSection(FCS);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_queue.ExtractGPSPacket: end');
+{$ifend}
   end;
 end;
 

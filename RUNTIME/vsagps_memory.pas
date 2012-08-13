@@ -22,17 +22,17 @@ function VSAGPS_GetMemZ(const dwBytes: DWORD): Pointer;
 
 procedure VSAGPS_FreeMem(p: Pointer); stdcall;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PChar);
+procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
 procedure VSAGPS_FreeAndNil_PWideChar(var p: PWideChar);
 
-function VSAGPS_AllocPCharByString(const s: String; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar;
 
-function VSAGPS_AllocPCharByPChar(const pSrc: PChar; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByPChar(const pSrc: PAnsiChar; const aNILforEmpty: Boolean): PAnsiChar;
 
-// deserialize packet from string
-function VSAGPS_AllocPByteByString(const s: String; const dwMinSize: DWORD): PByte;
-// serialize packet to string and allocate pchar
-function VSAGPS_AllocPCharByPByte(const pSrc: PByte; const dwLen: DWORD): PChar;
+// deserialize packet from ansistring
+function VSAGPS_AllocPByteByString(const s: AnsiString; const dwMinSize: DWORD): PByte;
+// serialize packet to ansistring and allocate pansichar
+function VSAGPS_AllocPCharByPByte(const pSrc: PByte; const dwLen: DWORD): PAnsiChar;
 
 implementation
 
@@ -52,7 +52,7 @@ begin
     HeapFree(GetProcessHeap, 0, p);
 end;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PChar);
+procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
 begin
   if (nil<>p) then begin
     VSAGPS_FreeMem(p);
@@ -68,7 +68,7 @@ begin
   end;
 end;
 
-function VSAGPS_AllocPCharByString(const s: String; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar;
 var d: Integer;
 begin
   Result:=nil;
@@ -79,11 +79,11 @@ begin
 
   Result:=VSAGPS_GetMem(d+1);
   if (0<d) then
-    CopyMemory(Result, PChar(s), d);
+    CopyMemory(Result, PAnsiChar(s), d);
   Result[d]:=#0;
 end;
 
-function VSAGPS_AllocPCharByPChar(const pSrc: PChar; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByPChar(const pSrc: PAnsiChar; const aNILforEmpty: Boolean): PAnsiChar;
 var d: Integer;
 begin
   Result:=nil;
@@ -100,7 +100,7 @@ begin
   CopyMemory(Result, pSrc, d+1);
 end;
 
-function VSAGPS_AllocPByteByString(const s: String; const dwMinSize: DWORD): PByte;
+function VSAGPS_AllocPByteByString(const s: AnsiString; const dwMinSize: DWORD): PByte;
 var
   v: Integer;
   cur: PByte;
@@ -131,11 +131,11 @@ begin
   end;
 end;
 
-function VSAGPS_AllocPCharByPByte(const pSrc: PByte; const dwLen: DWORD): PChar;
+function VSAGPS_AllocPCharByPByte(const pSrc: PByte; const dwLen: DWORD): PAnsiChar;
 var
   i: DWORD;
   cur: PByte;
-  s: String;
+  s: AnsiString;
 begin
   Result:=nil;
   if (nil<>pSrc) and (0<dwLen) then

@@ -31,7 +31,7 @@ const
 type
   TCOMCheckerThread = class(TThread)
   private
-    FCOMName: String;
+    FCOMName: AnsiString;
     FCOMHandle: THandle;
     FCOMFinished: Boolean;
     FCOMOpened: Boolean;
@@ -51,7 +51,7 @@ type
     procedure Execute; override;
   public
     destructor Destroy; override;
-    property COMName: String read FCOMName;
+    property COMName: AnsiString read FCOMName;
   end;
 
   TCOMCheckerObject = class(TObject)
@@ -135,7 +135,7 @@ begin
 end;
 *)
 
-function GetCOMDeviceFlags(const ADevNameLowercased: String): DWORD;
+function GetCOMDeviceFlags(const ADevNameLowercased: AnsiString): DWORD;
 begin
   // common
   // \Device\BthModem0 - bluetooth ports
@@ -165,9 +165,9 @@ var
   reg: TRegistry;
   sl_names: TStringList;
   
-  procedure InternalAddFromKey(const AKeyName: String);
+  procedure InternalAddFromKey(const AKeyName: AnsiString);
   var
-    sName, sValue: String;
+    sName, sValue: AnsiString;
     p: Integer;
     f: DWORD;
     i: Integer;
@@ -234,7 +234,7 @@ var
   tm: TCommTimeouts;
   dwRead: DWORD;
   dwTimeout: DWORD;
-  buf: array [0..cCOM_read_bytes-1] of Char;
+  buf: array [0..cCOM_read_bytes-1] of AnsiChar;
 begin
   //inherited;
   Terminate;
@@ -252,7 +252,7 @@ begin
   if dwTimeout>FCOMReadTimeout then
     dwTimeout:=FCOMReadTimeout;
 
-  FCOMHandle:=CreateFileA(PChar(FCOMName), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
+  FCOMHandle:=CreateFileA(PAnsiChar(FCOMName), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
 
   if (0<>FCOMHandle) and (INVALID_HANDLE_VALUE<>FCOMHandle) then
   try

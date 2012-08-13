@@ -68,20 +68,20 @@ type
 
   TStrings = class(Tvsagps_Indexed_List)
   private
-    function GetListItem(const AIndex: Integer): String;
-    function GetTextStr: String;
-    procedure SetTextStr(const S: String);
+    function GetListItem(const AIndex: Integer): AnsiString;
+    function GetTextStr: AnsiString;
+    procedure SetTextStr(const S: AnsiString);
   public
-    procedure AppendWithPtr(const ALine: String; const AUserPtr: Pointer);
-    procedure Append(const S: String);
-    procedure AppendPChar(const S: PChar);
-    function AddObject(const S: string; AObject: TObject): Integer;
+    procedure AppendWithPtr(const ALine: AnsiString; const AUserPtr: Pointer);
+    procedure Append(const S: AnsiString);
+    procedure AppendPChar(const S: PAnsiChar);
+    function AddObject(const S: AnsiString; AObject: TObject): Integer;
     procedure Assign(src: TStrings);
     procedure Clear;
     procedure LoadFromStream(AStream: THandleStream);
-    function IndexOf(const S: String): Integer;
-    property Items[const AIndex: Integer]: String read GetListItem; default;
-    property Text: String read GetTextStr write SetTextStr;
+    function IndexOf(const S: AnsiString): Integer;
+    property Items[const AIndex: Integer]: AnsiString read GetListItem; default;
+    property Text: AnsiString read GetTextStr write SetTextStr;
   end;
   TStringList = TStrings;
 
@@ -89,7 +89,7 @@ type
   private
     procedure InternalCloseFile;
   public
-    constructor Create(const AFileName: string; const Mode: Word); reintroduce;
+    constructor Create(const AFileName: AnsiString; const Mode: Word); reintroduce;
     destructor Destroy; override;
     function Size: Int64; override;
   end;
@@ -132,15 +132,15 @@ type
     FCurrentKey: HKEY;
     procedure SetRootKey(const Value: HKEY);
   protected
-    function InternalRegOpenKeyEx(const AKey: String; const AAccess: DWORD): Boolean;
+    function InternalRegOpenKeyEx(const AKey: AnsiString; const AAccess: DWORD): Boolean;
     procedure InternalCloseCurrentKey;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function OpenKeyReadOnly(const AKey: String): Boolean;
+    function OpenKeyReadOnly(const AKey: AnsiString): Boolean;
     procedure GetValueNames(AStrings: TStrings);
-    function ReadString(const AName: string): string;
+    function ReadString(const AName: AnsiString): AnsiString;
 
     property RootKey: HKEY read FRootKey write SetRootKey;
   end;
@@ -253,23 +253,23 @@ end;
 
 { TStrings }
 
-function TStrings.AddObject(const S: string; AObject: TObject): Integer;
+function TStrings.AddObject(const S: AnsiString; AObject: TObject): Integer;
 begin
   InternalAppendItem(VSAGPS_AllocPCharByString(S, FALSE), Pointer(AObject));
   Result:=0;
 end;
 
-procedure TStrings.Append(const S: String);
+procedure TStrings.Append(const S: AnsiString);
 begin
   AppendWithPtr(S, nil);
 end;
 
-procedure TStrings.AppendPChar(const S: PChar);
+procedure TStrings.AppendPChar(const S: PAnsiChar);
 begin
   InternalAppendItem(VSAGPS_AllocPCharByPChar(S, FALSE), nil);
 end;
 
-procedure TStrings.AppendWithPtr(const ALine: String; const AUserPtr: Pointer);
+procedure TStrings.AppendWithPtr(const ALine: AnsiString; const AUserPtr: Pointer);
 begin
   InternalAppendItem(VSAGPS_AllocPCharByString(ALine, FALSE), AUserPtr);
 end;
@@ -278,14 +278,14 @@ procedure TStrings.Assign(src: TStrings);
 var
   EnumPtr: Pvsagps_list_item;
   PayloadPtr: Pointer;
-  S: String;
+  S: AnsiString;
 begin
   Clear;
   if (nil=src) then
     Exit;
   EnumPtr:=nil;
   while src.EnumItems(EnumPtr, PayloadPtr) do begin
-    SafeSetStringP(S, PChar(PayloadPtr));
+    SafeSetStringP(S, PAnsiChar(PayloadPtr));
     Append(S);
   end;
 end;
@@ -295,30 +295,30 @@ begin
   InternalFreeAllItems;
 end;
 
-function TStrings.GetListItem(const AIndex: Integer): String;
+function TStrings.GetListItem(const AIndex: Integer): AnsiString;
 var p: Pvsagps_list_item;
 begin
   if InternalLocateItem(AIndex, p) then begin
     if (p<>nil) and (p^.data<>nil) then
-      SetString(Result, PChar(p^.data), StrLen(PChar(p^.data)))
+      SetString(Result, PAnsiChar(p^.data), StrLen(PAnsiChar(p^.data)))
     else
       Result:='';
   end else
     Result:='';
 end;
 
-function TStrings.GetTextStr: String;
+function TStrings.GetTextStr: AnsiString;
 var
   EnumPtr: Pvsagps_list_item;
   PayloadPtr: Pointer;
-  S: String;
+  S: AnsiString;
   line_counter: DWORD;
 begin
   Result:='';
   line_counter:=0;
   EnumPtr:=nil;
   while EnumItems(EnumPtr, PayloadPtr) do begin
-    SafeSetStringP(S, PChar(PayloadPtr));
+    SafeSetStringP(S, PAnsiChar(PayloadPtr));
     if (0<line_counter) then
       Result:=Result+System.sLineBreak;
     Result:=Result+S;
@@ -326,7 +326,7 @@ begin
   end;
 end;
 
-function TStrings.IndexOf(const S: String): Integer;
+function TStrings.IndexOf(const S: AnsiString): Integer;
 var
   EnumPtr: Pvsagps_list_item;
   PayloadPtr: Pointer;
@@ -336,8 +336,8 @@ begin
   EnumPtr:=nil;
   L:=Length(S);
   while EnumItems(EnumPtr, PayloadPtr) do begin
-    if (StrLen(PChar(PayloadPtr))=L) then
-    if (0=AnsiStrLIComp(PChar(PayloadPtr), PChar(S), L)) then
+    if (StrLen(PAnsiChar(PayloadPtr))=L) then
+    if (0=AnsiStrLIComp(PAnsiChar(PayloadPtr), PAnsiChar(S), L)) then
       Exit;
     Inc(Result);
   end;
@@ -347,7 +347,7 @@ end;
 procedure TStrings.LoadFromStream(AStream: THandleStream);
 var
   L: Integer;
-  s: String;
+  s: AnsiString;
 begin
   L:=AStream.Size;
   SetLength(s, L);
@@ -355,15 +355,15 @@ begin
   SetTextStr(s);
 end;
 
-procedure TStrings.SetTextStr(const S: String);
+procedure TStrings.SetTextStr(const S: AnsiString);
 begin
   Clear;
-  VSAGPS_DividePCharToLines(PChar(S), Self.AppendWithPtr, nil, FALSE, nil);
+  VSAGPS_DividePCharToLines(PAnsiChar(S), Self.AppendWithPtr, nil, FALSE, nil);
 end;
 
 { TFileStream }
 
-constructor TFileStream.Create(const AFileName: string; const Mode: Word);
+constructor TFileStream.Create(const AFileName: AnsiString; const Mode: Word);
 var F: Integer;
 begin
   F:=FileOpen(AFileName, Mode);
@@ -496,7 +496,7 @@ end;
 
 { TRegistry }
 
-function TRegistry.OpenKeyReadOnly(const AKey: String): Boolean;
+function TRegistry.OpenKeyReadOnly(const AKey: AnsiString): Boolean;
 begin
   Result:=InternalRegOpenKeyEx(AKey, KEY_READ);
   if (not Result) then
@@ -505,12 +505,12 @@ begin
     Result:=InternalRegOpenKeyEx(AKey, KEY_QUERY_VALUE);
 end;
 
-function TRegistry.ReadString(const AName: string): string;
+function TRegistry.ReadString(const AName: AnsiString): AnsiString;
 var
   res: LongInt;
-  pBuf: PChar;
+  pBuf: PAnsiChar;
   dwType, dwSize, dwLen: DWORD;
-  S,SS: String;
+  S,SS: AnsiString;
 begin
   Result:='';
   SS:=AName+#0;
@@ -520,7 +520,7 @@ begin
     repeat
       dwType:=REG_NONE;
       dwSize:=dwLen;
-      res:=RegQueryValueEx(FCurrentKey, PChar(SS), nil, @dwType, PByte(pBuf), @dwSize);
+      res:=RegQueryValueEx(FCurrentKey, PAnsiChar(SS), nil, @dwType, PByte(pBuf), @dwSize);
       if (ERROR_SUCCESS=res) then begin
         // ok
         SafeSetStringL(Result, pBuf, dwLen);
@@ -565,7 +565,7 @@ procedure TRegistry.GetValueNames(AStrings: TStrings);
 var
   dwIndex, dwLen, dwSize: DWORD;
   res: Longint;
-  S: String;
+  S: AnsiString;
 begin
   AStrings.Clear;
   dwIndex:=0;
@@ -573,10 +573,10 @@ begin
   SetLength(S, dwLen);
   repeat
     dwSize:=dwLen;
-    res:=RegEnumValue(FCurrentKey, dwIndex, PChar(S), dwSize, nil, nil, nil, nil);
+    res:=RegEnumValue(FCurrentKey, dwIndex, PAnsiChar(S), dwSize, nil, nil, nil, nil);
     if (ERROR_SUCCESS=res) then begin
       // ok
-      AStrings.AppendPChar(PChar(S));
+      AStrings.AppendPChar(PAnsiChar(S));
       Inc(dwIndex);
     end else if (ERROR_NO_MORE_ITEMS=res) then begin
       // finished
@@ -600,11 +600,11 @@ begin
   end;
 end;
 
-function TRegistry.InternalRegOpenKeyEx(const AKey: String; const AAccess: DWORD): Boolean;
+function TRegistry.InternalRegOpenKeyEx(const AKey: AnsiString; const AAccess: DWORD): Boolean;
 var
   hTempKey: HKEY;
 begin
-  Result := (RegOpenKeyEx(FRootKey, PChar(AKey), 0, AAccess, hTempKey) = ERROR_SUCCESS);
+  Result := (RegOpenKeyExA(FRootKey, PAnsiChar(AKey), 0, AAccess, hTempKey) = ERROR_SUCCESS);
   if Result then
     FCurrentKey:=hTempKey;
 end;

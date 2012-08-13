@@ -29,7 +29,7 @@ type
   UInt16 = Word;
   UInt32 = DWORD;
   PCWSTR = PWideChar;
-  PCSZ = PChar;
+  PCSZ = PAnsiChar;
   LPBYTE = PByte;
   PLongBool = ^LongBool;
   TVSAGPS_HANDLE = Pointer;
@@ -136,7 +136,7 @@ const
   cVSAGPS_TimeStampFileNameFormat = 'yyyy.mm.dd_hh-nn-ss';
 
 type
-  TNMEA_TalkerID = array [0..1] of char;
+  TNMEA_TalkerID = array [0..1] of AnsiChar;
   PNMEA_TalkerID = ^TNMEA_TalkerID;
 
   TVSAGPS_FIX_SAT = packed record {size=2}
@@ -217,20 +217,20 @@ function SatAvailableForShow(const ASatelliteID: SInt8;
 function GetSatNumberIndexEx(p: PVSAGPS_FIX_SATS; const pSatInfo: PVSAGPS_FIX_SAT; var result_index: ShortInt): Boolean;
 
 // get talker_id for GNxxx
-function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): String;
+function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): AnsiString;
 
 // for functions calls
 function Make_TVSAGPS_FIX_SAT(const ASatelliteID: SInt8; const AConstellationFlag: Byte): TVSAGPS_FIX_SAT;
 function Prep_TVSAGPS_FIX_SAT(const ASatIDFromDevice: Integer): TVSAGPS_FIX_SAT;
 
-// string to talker_id
-procedure Parse_NMEA_TalkerID(const ATalkerID: String; p: PNMEA_TalkerID);
+// ansistring to talker_id
+procedure Parse_NMEA_TalkerID(const ATalkerID: AnsiString; p: PNMEA_TalkerID);
 
-// talker_id to string
-function NMEA_TalkerID_to_String(const p: PNMEA_TalkerID): String;
+// talker_id to ansistring
+function NMEA_TalkerID_to_String(const p: PNMEA_TalkerID): AnsiString;
 
 // get ptr to working data (depends on talker_id)
-function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: String): PVSAGPS_FIX_SATS;
+function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: AnsiString): PVSAGPS_FIX_SATS;
 
 // get count of fixed sats
 function Get_PVSAGPS_FIX_SATS_FixCount(const p: PVSAGPS_FIX_SATS): Byte;
@@ -241,13 +241,13 @@ procedure DecodeCOMDeviceFlags(const AFlags: DWORD; AOptions: PCOMAutodetectOpti
 procedure EncodeCOMDeviceFlags(const AOptions: PCOMAutodetectOptions; out AFlags: DWORD);
 
 // returns number of com port by name (3 for 'COM3')
-function GetCOMPortNumber(const ACOMPortName: String): SmallInt;
+function GetCOMPortNumber(const ACOMPortName: AnsiString): SmallInt;
 
 function GPSStateChangeCorrectly(const old_state, new_state: Tvsagps_GPSState): Boolean;
 
-function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): String;
+function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
 
-function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): String;
+function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): AnsiString;
 
 implementation
 
@@ -281,7 +281,7 @@ begin
   Result:=FALSE;
 end;
 
-function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): String;
+function Get_TalkerID_By_SatList(p: PVSAGPS_FIX_SATS): AnsiString;
 begin
   if (nil<>p) then
   if (0<p.all_count) then begin
@@ -307,7 +307,7 @@ begin
   Result.constellation_flag:=0;
 end;
 
-procedure Parse_NMEA_TalkerID(const ATalkerID: String; p: PNMEA_TalkerID);
+procedure Parse_NMEA_TalkerID(const ATalkerID: AnsiString; p: PNMEA_TalkerID);
 begin
   if Length(ATalkerID)>1 then begin
     p^[0]:=ATalkerID[1];
@@ -318,7 +318,7 @@ begin
   end;
 end;
 
-function NMEA_TalkerID_to_String(const p: PNMEA_TalkerID): String;
+function NMEA_TalkerID_to_String(const p: PNMEA_TalkerID): AnsiString;
 begin
   if (#0=p^[0]) then
     Result:=''
@@ -326,7 +326,7 @@ begin
     Result:=p^[0]+p^[1];
 end;
 
-function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: String): PVSAGPS_FIX_SATS;
+function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: AnsiString): PVSAGPS_FIX_SATS;
 begin
   if SameText(ATalkerID, nmea_ti_GLONASS) then
     Result := @(p^.gl)
@@ -390,9 +390,9 @@ begin
     AFlags := (AFlags or cCOM_src_Others);
 end;
 
-function GetCOMPortNumber(const ACOMPortName: String): SmallInt;
+function GetCOMPortNumber(const ACOMPortName: AnsiString): SmallInt;
 var
-  S: String;
+  S: AnsiString;
   p: Integer;
 begin
   S:=ACOMPortName;
@@ -426,11 +426,11 @@ begin
   end;
 end;
 
-function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): String;
+function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
 const
   ISO8601_Decimal_Separator = '.';
 var
-  ms: String;
+  ms: AnsiString;
 begin
   // 2001-11-16T23:03:38Z
   Result:=FormatDateTime('yyyy-mm-dd',ADateTime)+'T'+FormatDateTime('hh:nn:ss',ADateTime);
@@ -445,8 +445,8 @@ begin
   Result:=Result+'Z';
 end;
 
-function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): String;
-var FFormat: String;
+function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): AnsiString;
+var FFormat: AnsiString;
 begin
   FFormat:=cVSAGPS_TimeStampFileNameFormat;
   if bWithMSec then

@@ -36,13 +36,13 @@ type
   end;
   PCoordLineData = ^TCoordLineData;
 
-function parse_string_to_strings(const ASource: String;
-                                 const ASeparator: Char;
+function parse_string_to_strings(const ASource: AnsiString;
+                                 const ASeparator: AnsiChar;
                                  AStrings: TStrings;
                                  const AExitAfterParsedCount: Integer=0): LongInt;
 
 // parse single plt line
-function parse_plt_line(const ASource: String;
+function parse_plt_line(const ASource: AnsiString;
                         const AData: PCoordLineData;
                         const AStrings: TStrings;
                         const AFormatSettings: TFormatSettings): Boolean;
@@ -54,13 +54,13 @@ function parse_kml_coordinate(const ASource: WideString;
 
 implementation
 
-function parse_string_to_strings(const ASource: String;
-                                 const ASeparator: Char;
+function parse_string_to_strings(const ASource: AnsiString;
+                                 const ASeparator: AnsiChar;
                                  AStrings: TStrings;
                                  const AExitAfterParsedCount: Integer): LongInt;
 var
   p: Integer;
-  s: String;
+  s: AnsiString;
 begin
   AStrings.Clear;
   s:=ASource;
@@ -85,12 +85,12 @@ begin
   Result:=AStrings.Count;
 end;
 
-function parse_plt_line(const ASource: String;
+function parse_plt_line(const ASource: AnsiString;
                         const AData: PCoordLineData;
                         const AStrings: TStrings;
                         const AFormatSettings: TFormatSettings): Boolean;
 var
-  s: String;
+  s: AnsiString;
 begin
   // 23.8322052,32.6251352,1,590.9684,40879.2871064815,02.12.2011,06:53:26
   //   63.732910,  54.337920,0,  588.7,39817.5987616, 04-џэт-09, 14:22:13
@@ -141,6 +141,10 @@ begin
   ws_alt:=ASource;
   ws_lat:='';
   ws_lon:='';
+
+  while (Length(ws_alt)>0) and IsDelimiter(' '#9#10#13#160, ws_alt, 1) do begin
+    System.Delete(ws_alt,1,1);
+  end;
 
   // extract lon
   while (0<Length(ws_alt)) and (','<>ws_alt[1]) do begin

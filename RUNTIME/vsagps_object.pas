@@ -20,6 +20,7 @@ uses
 {$else}
   Classes,
 {$ifend}
+  Dialogs,
   vsagps_public_base,
   vsagps_public_types,
   vsagps_public_unit_info,
@@ -50,7 +51,7 @@ type
     destructor Destroy; override;
 
     function GPSConnect(const AGPSDevType: DWORD;
-                        const AGPSDevName: String;
+                        const AGPSDevName: AnsiString;
                         const AFileSource: PWideChar;
                         const AALLDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
                         const ANewDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
@@ -60,7 +61,7 @@ type
 
     // dump packet to string representation (for logging)
     function SerializePacket(const AUnitIndex: Byte;
-                             const APacket: Pointer): PChar;
+                             const APacket: Pointer): PAnsiChar;
 
     // send packet to device object
     function SendPacket_ToUnit(const AUnitIndex: Byte;
@@ -79,6 +80,7 @@ implementation
 
 uses
   vsagps_memory,
+  vsagps_public_debugstring,
   vsagps_device_usb_garmin,
   vsagps_device_com_nmea,
   vsagps_track_reader,
@@ -162,6 +164,10 @@ begin
     while FPacketQueue.ExtractGPSPacket(queued_pointer, queued_unit_index) do
     if (nil<>queued_pointer) then
     try
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: extracted');
+{$ifend}
+
       pUnit:=nil;
       // set timestamp and get params
       if (queued_unit_index<=cUnitIndex_Max) then begin
@@ -212,6 +218,9 @@ begin
       // low-level external parser
       if (nil<>FALLDeviceParams) then
       if Assigned(FALLDeviceParams^.pLowLevelHandler) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+          VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: LowLevelHandler');
+{$ifend}
           FALLDeviceParams^.pLowLevelHandler(ptrUserPtr, queued_unit_index, dwDevType, queued_pointer);
       end;
 
@@ -227,8 +236,9 @@ begin
           if _CheckTerminated then
             break;
           // call device object
-          if Assigned(pUnit^.objDevice) then
+          if Assigned(pUnit^.objDevice) then begin
             pUnit^.objDevice.ParsePacket(queued_pointer);
+          end;
         finally
           Unlock_CS_State;
         end;
@@ -274,6 +284,9 @@ begin
   except
   end;
   Sleep(dwDelay);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: sleeping');
+{$ifend}
   until FALSE;
 
   // kill thread
@@ -305,7 +318,7 @@ begin
 end;
 
 function Tvsagps_object.SerializePacket(const AUnitIndex: Byte;
-                                        const APacket: Pointer): PChar;
+                                        const APacket: Pointer): PAnsiChar;
 var p: PVSAGPS_UNIT;
 begin
   Result:=nil;
@@ -347,7 +360,7 @@ end;
 
 function Tvsagps_object.GPSConnect(
   const AGPSDevType: DWORD;
-  const AGPSDevName: String;
+  const AGPSDevName: AnsiString;
   const AFileSource: PWideChar;
   const AALLDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
   const ANewDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
@@ -357,7 +370,12 @@ function Tvsagps_object.GPSConnect(
 var
   VOldState: Tvsagps_GPSState;
   p: PVSAGPS_UNIT;
+  //DCBString: AnsiString;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.GPSConnect: begin');
+{$ifend}
+
   Result:=FALSE;
   if (0=(AGPSDevType and
           (gdt_USB_Garmin or
@@ -377,6 +395,10 @@ begin
   if (gdt_FILE_Track=(AGPSDevType and gdt_FILE_Track)) and (nil=AFileSource) then
     Exit;
   
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.GPSConnect: checked');
+{$ifend}
+
   Lock_CS_State;
   try
     // current state
@@ -402,6 +424,10 @@ begin
     // prepare struct
     InternalPrepareItem(AUnitIndexOut^);
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.GPSConnect: initialized');
+{$ifend}
+
     p^.pDevParams:=ANewDevParams;
 
     // create object
@@ -415,7 +441,12 @@ begin
       // com nmea
       p^.objDevice:=Tvsagps_device_com_nmea.Create;
       // TODO: apply comm DCB params here - see BuildCommDCB (ansi only)
-      // p^.objDevice.ExecuteGPSCommand(gpsc_Set_DCB_Str_Info_A, PAnsiChar);
+      (*
+      DCBString := 'baud=4800 parity=N data=8 stop=1';
+      if InputQuery('GPS Device Comm params', 'Input Line for BuildCommDCB', DCBString) then begin
+        p^.objDevice.ExecuteGPSCommand(gpsc_Set_DCB_Str_Info_A, PAnsiChar(DCBString));
+      end;
+      *)
     end;
 
     if Assigned(p^.objDevice) then begin
@@ -438,8 +469,16 @@ begin
         InternalChangeALLGPSState(gs_PendingConnecting, FALSE);
       // ok
       Result:=TRUE;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_object.GPSConnect: ok');
+{$ifend}
+
     end else begin
       // error
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_object.GPSConnect: no device');
+{$ifend}
       InternalCleanupItem(AUnitIndexOut^);
     end;
   finally

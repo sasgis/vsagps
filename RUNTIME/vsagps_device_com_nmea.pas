@@ -37,8 +37,8 @@ type
   Tvsagps_device_com_nmea = class(Tvsagps_device_with_nmea)
   private
     FParser: Tvsagps_parser_nmea;
-    FNMEABuffer: array [0..cNmea_Buffer_Size-1] of char;
-    FGlobalNmeaBuffer: String;
+    FNMEABuffer: array [0..cNmea_Buffer_Size-1] of AnsiChar;
+    FGlobalNmeaBuffer: AnsiString;
     FDCB_Str_Info_A: AnsiString;
     FSavedUTCDateTime: TNMEA_Date_Time;
   private
@@ -49,24 +49,25 @@ type
     procedure Do_RequestGPSCommand_Apply_UTCDateTime(const ADate: PNMEA_Date; const ATime: PNMEA_Time);
   protected
     FUserIni: TStringList;
+    FIniReadOnly: Boolean;
     procedure InternalLoadUserIni;
     procedure InternalSendUserPackets;
   protected
     // parsers for proprietary sentences
-    function Parse_Proprietary_CSI_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_DME_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_EMT_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_GRM_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_MGN_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_MTK_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_RWI_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_SLI_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_SRF_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_STI_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_TNL_Data(const AData, ASubCommand: String): DWORD;
-    function Parse_Proprietary_XEM_Data(const AData, ASubCommand: String): DWORD;
+    function Parse_Proprietary_CSI_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_DME_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_EMT_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_GRM_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_MGN_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_MTK_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_RWI_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_SLI_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_SRF_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_STI_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_TNL_Data(const AData, ASubCommand: AnsiString): DWORD;
+    function Parse_Proprietary_XEM_Data(const AData, ASubCommand: AnsiString): DWORD;
     // nmea parsers
-    function Internal_Parse_NmeaComm_Packets(const pPacket: PChar): DWORD;
+    function Internal_Parse_NmeaComm_Packets(const pPacket: PAnsiChar): DWORD;
   protected
     procedure InternalResetDeviceConnectionParams; override;
     procedure Internal_Before_Open_Device; override;
@@ -78,16 +79,18 @@ type
     // receive packets from device to queue
     function WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean; override;
     // complete and send nmea packet
-    function Send_NmeaComm_Packet(const AFullPacket: String): Boolean;
-    function Make_and_Send_NmeaComm_Packet(const AIncompletePacket: String): Boolean;
-    function Make_and_Send_NmeaComm_Packets(sl_sent: TStrings): Integer;
+    function Send_NmeaComm_Packet(const AFullPacket: AnsiString): Boolean;
+
+    function Make_and_Send_NmeaComm_Packet(const AIncompletePacket: AnsiString): Boolean;
+
+    function Make_and_Send_NmeaComm_Packets(const sl_sent: TStrings): Integer;
   public
     constructor Create; override;
     destructor Destroy; override;
 
     procedure ExecuteGPSCommand(const ACommand: LongInt;
                                 const APointer: Pointer); override;
-    function SerializePacket(const APacket: Pointer): PChar; override;
+    function SerializePacket(const APacket: Pointer): PAnsiChar; override;
     function ParsePacket(const ABuffer: Pointer): DWORD; override;
 
     function SendPacket(const APacketBuffer: Pointer;
@@ -100,6 +103,7 @@ implementation
 uses
   vsagps_public_unit_info,
   vsagps_memory,
+  vsagps_public_debugstring,
   vsagps_com_checker,
   vsagps_ini;
 
@@ -107,6 +111,10 @@ uses
 
 constructor Tvsagps_device_com_nmea.Create;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Create: begin');
+{$ifend}
+
   FParser:=Tvsagps_parser_nmea.Create;
 
   inherited;
@@ -124,14 +132,25 @@ begin
   FDCB_Str_Info_A:='';
   FGlobalNmeaBuffer:='';
   FUserIni:=nil;
+  FIniReadOnly:=FALSE;
   InternalLoadUserIni;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Create: end');
+{$ifend}
 end;
 
 destructor Tvsagps_device_com_nmea.Destroy;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Destroy: begin');
+{$ifend}
   inherited;
   FreeAndNil(FUserIni);
   FreeAndNil(FParser);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Destroy: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_com_nmea.Do_RequestGPSCommand_Apply_UTCDateTime(const ADate: PNMEA_Date; const ATime: PNMEA_Time);
@@ -200,7 +219,7 @@ procedure Tvsagps_device_com_nmea.ExecuteGPSCommand(const ACommand: LongInt;
                                                     const APointer: Pointer);
 var
   sl_sent, sl_prop: TStringList;
-  strParamName: String;
+  strParamName: AnsiString;
 
   procedure MakeProps;
   var i: Tgpms_Code;
@@ -222,7 +241,7 @@ var
 begin
   inherited;
 
-  // set DCB info as string
+  // set DCB info as AnsiString
   if (gpsc_Set_DCB_Str_Info_A = ACommand) then
   if (nil<>APointer) then begin
     SetString(FDCB_Str_Info_A, PAnsiChar(APointer), StrLen(PAnsiChar(APointer)));
@@ -302,6 +321,7 @@ var
   sl_sent: TStringList;
 begin
   // send user defined packets on connection
+  if (not FIniReadOnly) then
   if (FUserIni<>nil) then begin
     sl_sent:=TStringList.Create;
     try
@@ -317,17 +337,31 @@ end;
 
 procedure Tvsagps_device_com_nmea.Internal_Before_Close_Device;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Close_Device: begin');
+{$ifend}
   inherited;
-  if (0<>FGPSDeviceSessionStarted) and (0<>FGPSDeviceHandle) then
+  if (0<>FGPSDeviceSessionStarted) and (0<>FGPSDeviceHandle) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Close_Device: PurgeComm');
+{$ifend}
     PurgeComm(FGPSDeviceHandle, PURGE_TXABORT or PURGE_RXABORT or PURGE_TXCLEAR or PURGE_RXCLEAR);
+  end;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Close_Device: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_com_nmea.Internal_Before_Open_Device;
 var
-  sNTname: String;
+  sNTname: AnsiString;
   VAutodetectResult: SmallInt;
   VAutodetectCancelled: Boolean;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: begin');
+{$ifend}
+
   inherited;
 
   // connect to user defined COMx
@@ -335,6 +369,10 @@ begin
 
   if (FALLDeviceParams^.btAutodetectOnConnect<>0) then begin
     // autodetect
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: autodetect');
+{$ifend}
+
     InternalMakeAutodetectObject;
     with TCOMCheckerObject(FAutodetectObject) do
     try
@@ -343,6 +381,9 @@ begin
       FGPSDeviceHandle:=ExtractFirstOpenedHandle;
       if (0<=VAutodetectResult) then begin
         // make com name
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: make com name');
+{$ifend}
         sNTname:='COM'+IntToStr(VAutodetectResult);
         Sleep(0);
       end;
@@ -351,24 +392,36 @@ begin
     end;
   end;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: prefix');
+{$ifend}
+
   // To specify a COM port number greater than 9, use the following syntax: "\\.\COM10".
   if (not (System.Pos(cNmea_NT_COM_Prefix,sNTname)>0)) then
     sNTname:=cNmea_NT_COM_Prefix+sNTname;
       
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: cleanup');
+{$ifend}
+
   // make and fill buffer
   VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
   FGPSDeviceInfo_NameToConnectInternalA:=VSAGPS_AllocPCharByString(sNTname, TRUE);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: end');
+{$ifend}
 end;
 
-function Tvsagps_device_com_nmea.Internal_Parse_NmeaComm_Packets(const pPacket: PChar): DWORD;
+function Tvsagps_device_com_nmea.Internal_Parse_NmeaComm_Packets(const pPacket: PAnsiChar): DWORD;
 
-  function _RunWithoutStarter(const s: String): DWORD;
+  function _RunWithoutStarter(const s: AnsiString): DWORD;
   begin
     Result:=FParser.Parse_Sentence_Without_Starter(s);
   end;
 
   procedure _CutNmeaByTail(k: Integer);
-  var str_nmea_packet: String;
+  var str_nmea_packet: AnsiString;
   begin
     str_nmea_packet:=System.Copy(FGlobalNmeaBuffer, 1, k);
     System.Delete(FGlobalNmeaBuffer, 1, k);
@@ -378,9 +431,13 @@ function Tvsagps_device_com_nmea.Internal_Parse_NmeaComm_Packets(const pPacket: 
 var
   pNmea_Tail, pNmea_Aux: Integer;
   i: Byte;
-  new_part: String;
+  new_part: AnsiString;
 
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString(ClassName+'.Internal_Parse_NmeaComm_Packets:');
+  VSAGPS_DebugPAnsiChar(pPacket);
+{$ifend}
   Result:=0;
   SafeSetStringP(new_part, pPacket);
   FGlobalNmeaBuffer:=FGlobalNmeaBuffer+new_part;
@@ -434,19 +491,21 @@ begin
   // not implemented yet
 end;
 
-function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packet(const AIncompletePacket: String): Boolean;
-var s: String;
+function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packet(const AIncompletePacket: AnsiString): Boolean;
+var s: AnsiString;
 begin
   s:=MakeNmeaFullString(AIncompletePacket);
   Result:=Send_NmeaComm_Packet(s);
 end;
 
-function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packets(sl_sent: TStrings): Integer;
+function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packets(const sl_sent: TStrings): Integer;
 var
   i: Integer;
   b: Boolean;
 begin
   Result:=0;
+  if FIniReadOnly then
+    Exit;
   if (0 < sl_sent.Count) then
   for i := 0 to sl_sent.Count - 1 do begin
     if (0<i) then
@@ -468,6 +527,8 @@ begin
   except
     FreeAndNil(FUserIni);
   end;
+
+  FIniReadOnly := VSAGPS_ini_IsReadOnly(FUserIni);
 end;
 
 function Tvsagps_device_com_nmea.ParsePacket(const ABuffer: Pointer): DWORD;
@@ -476,8 +537,8 @@ begin
   Result:=Internal_Parse_NmeaComm_Packets(ABuffer)
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_CSI_Data(const AData, ASubCommand: String): DWORD;
-var sType: String;
+function Tvsagps_device_com_nmea.Parse_Proprietary_CSI_Data(const AData, ASubCommand: AnsiString): DWORD;
+var sType: AnsiString;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -506,8 +567,8 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_DME_Data(const AData, ASubCommand: String): DWORD;
-var sType, sSubType, sValue: String;
+function Tvsagps_device_com_nmea.Parse_Proprietary_DME_Data(const AData, ASubCommand: AnsiString): DWORD;
+var sType, sSubType, sValue: AnsiString;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -535,8 +596,8 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_EMT_Data(const AData, ASubCommand: String): DWORD;
-var sType: String;
+function Tvsagps_device_com_nmea.Parse_Proprietary_EMT_Data(const AData, ASubCommand: AnsiString): DWORD;
+var sType: AnsiString;
 begin
   // $PEMT,100,05.03A,240701,082,15,1,08,06,04,0,0,2,1*7E
   Result:=0;
@@ -556,8 +617,8 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_GRM_Data(const AData, ASubCommand: String): DWORD;
-  function Internal_PPS_Mode(const AValue: String): String;
+function Tvsagps_device_com_nmea.Parse_Proprietary_GRM_Data(const AData, ASubCommand: AnsiString): DWORD;
+  function Internal_PPS_Mode(const AValue: AnsiString): AnsiString;
   begin
     if ('2'=AValue) then
       Result:='1 Hz'
@@ -617,7 +678,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_MGN_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_MGN_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -652,7 +713,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_MTK_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_MTK_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -687,7 +748,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_RWI_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_RWI_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -707,7 +768,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_SLI_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_SLI_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
 (*
@@ -733,10 +794,10 @@ eg2.    $PSLIB,,,K*23
 *)
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_SRF_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_SRF_Data(const AData, ASubCommand: AnsiString): DWORD;
 var
   i: Byte;
-  s,t: String;
+  s,t: AnsiString;
   p: Integer;
 begin
   Result:=0;
@@ -792,12 +853,12 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_STI_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_STI_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_TNL_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_TNL_Data(const AData, ASubCommand: AnsiString): DWORD;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -844,7 +905,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Parse_Proprietary_XEM_Data(const AData, ASubCommand: String): DWORD;
+function Tvsagps_device_com_nmea.Parse_Proprietary_XEM_Data(const AData, ASubCommand: AnsiString): DWORD;
 
   procedure SetForItems(const guik_A_Name, guik_A_Version, guik_A_SubVersion,
                         guik_A_Build, guik_A_Release: TVSAGPS_UNIT_INFO_Kind);
@@ -864,7 +925,7 @@ function Tvsagps_device_com_nmea.Parse_Proprietary_XEM_Data(const AData, ASubCom
   end;
 
 var
-  sVR,sType: String;
+  sVR,sType: AnsiString;
 begin
   Result:=0;
   if (0<FParser.Count) then
@@ -896,7 +957,7 @@ end;
 function Tvsagps_device_com_nmea.SendPacket(const APacketBuffer: Pointer;
                                             const APacketSize: DWORD;
                                             const AFlags: DWORD): LongBool;
-var s: String;
+var s: AnsiString;
 begin
   SafeSetStringL(s, APacketBuffer, APacketSize);
   // full packet or data only?
@@ -909,16 +970,38 @@ begin
   end;
 end;
 
-function Tvsagps_device_com_nmea.Send_NmeaComm_Packet(const AFullPacket: String): Boolean;
+function Tvsagps_device_com_nmea.Send_NmeaComm_Packet(const AFullPacket: AnsiString): Boolean;
 var dwWriten: DWORD;
 begin
-  Result:=(WriteFile(FGPSDeviceHandle, PChar(AFullPacket)^, Length(AFullPacket), dwWriten, nil)<>FALSE);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Send_NmeaComm_Packet: "' + AFullPacket + '"');
+{$ifend}
+
+  if FIniReadOnly then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Send_NmeaComm_Packet: read-only');
+{$ifend}
+    Result := FALSE;
+    Exit;
+  end;
+
+  dwWriten:=0;
+  Result:=(WriteFile(FGPSDeviceHandle, PAnsiChar(AFullPacket)^, Length(AFullPacket), dwWriten, nil)<>FALSE);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Send_NmeaComm_Packet: ok (' + IntToStr(Ord(Result))+ ') (' + IntToStr(dwWriten) + ')');
+{$ifend}
 end;
 
-function Tvsagps_device_com_nmea.SerializePacket(const APacket: Pointer): PChar;
+function Tvsagps_device_com_nmea.SerializePacket(const APacket: Pointer): PAnsiChar;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.SerializePacket:');
+  VSAGPS_DebugPAnsiChar(PAnsiChar(APacket));
+{$ifend}
+
   if (APacket<>nil) then
-    Result:=VSAGPS_AllocPCharByPChar(PChar(APacket), TRUE)
+    Result:=VSAGPS_AllocPCharByPChar(PAnsiChar(APacket), TRUE)
   else
     Result:=nil;
 end;
@@ -927,17 +1010,28 @@ function Tvsagps_device_com_nmea.WorkingThread_Receive_Packets(const AWorkingThr
 var
   bRead: Boolean;
   dwBytes: DWORD;
-  queued_pointer: PChar;
+  queued_pointer: PAnsiChar;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_Receive_Packets: begin');
+{$ifend}
+
   Result:=FALSE;
   if (0=FGPSDeviceHandle) then
     Exit;
   
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_Receive_Packets: ReadFile');
+{$ifend}
+
   //ClearCommError(FGPSDeviceHandle)
   // read data from comm
   dwBytes:=0;
   bRead:=ReadFile(FGPSDeviceHandle, FNMEABuffer, cNmea_Buffer_Size, dwBytes, nil);
   if bRead and (dwBytes>0) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_Receive_Packets: ok');
+{$ifend}
     // packet received - make a buffer and put it into queue
     queued_pointer:=VSAGPS_GetMem(dwBytes+1);
     CopyMemory(queued_pointer, @(FNMEABuffer[0]), dwBytes);
@@ -952,6 +1046,9 @@ begin
   end else begin
     // error or no data received (timeout)
     dwBytes:=GetLastError;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_Receive_Packets: failed '+IntToStr(dwBytes));
+{$ifend}
     if (ERROR_TIMEOUT<>dwBytes) then begin
       // error
       FWT_Params.dwLastError:=dwBytes;
@@ -962,8 +1059,21 @@ end;
 
 function Tvsagps_device_com_nmea.WorkingThread_SendPacket: Boolean;
 var
-  s: String;
+  s: AnsiString;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_SendPacket: begin');
+{$ifend}
+
+  if FIniReadOnly then begin
+    // read-only mode - do not send to device at all
+    Result := FALSE;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_SendPacket: read-only');
+{$ifend}
+    Exit;
+  end;
+
   // send some starter packets for some different types of devices
   // unsupported sentences will be ignored
   try
@@ -971,9 +1081,17 @@ begin
   except
   end;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_SendPacket: make');
+{$ifend}
+
   // DEFAULT NMEA STARTER - send query RMC sentence
   s:=MakeNmeaBaseQuerySentence(nmea_ti_CC, nmea_ti_GPS, nmea_si_RMC);
   Result:=Make_and_Send_NmeaComm_Packet(s);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_SendPacket: end');
+{$ifend}
 end;
 
 function Tvsagps_device_com_nmea.WorkingThread_StartSession: Boolean;
@@ -1039,17 +1157,32 @@ var
     *)
   end;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: begin');
+{$ifend}
+
   Result := FALSE;
   if (0=FGPSDeviceHandle) then
     Exit;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: query');
+{$ifend}
+
   // try to obtain user-frendly device name
   Internal_Query_GPSDeviceName;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: SetupComm');
+{$ifend}
 
   // set buffers
   Result:=SetupComm(FGPSDeviceHandle, cNmea_Buffer_Size, cNmea_Buffer_Size);
   if (not Result) then begin
     FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: exit 1');
+{$ifend}
     Exit;
   end;
 
@@ -1057,32 +1190,72 @@ begin
   VModifyParams:=FALSE;
   VModifyTimeout:=FALSE;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: GetCommParams');
+{$ifend}
+
   // get-modify-set comm params
   Result:=_GetCommParams;
   if (not Result) then begin
     FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: exit 2');
+{$ifend}
     Exit;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: FillCommParams');
+{$ifend}
+
   _FillCommParams;
+
   if VModifyParams then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: SetCommState');
+{$ifend}
+
     Result:=SetCommState(FGPSDeviceHandle, d);
     if (not Result) then begin
       FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: exit 3');
+{$ifend}
       Exit;
     end;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: GetCommTimeouts');
+{$ifend}
 
   // get-modify-set timeouts
   Result:=GetCommTimeouts(FGPSDeviceHandle, t);
   if (not Result) then begin
     FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: exit 4');
+{$ifend}
     Exit;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: FillCommTimeouts');
+{$ifend}
+
   _FillCommTimeouts;
+
   if VModifyTimeout then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: SetCommTimeouts');
+{$ifend}
+
     Result:=SetCommTimeouts(FGPSDeviceHandle, t);
     if (not Result) then begin
       FWT_Params.dwFinishReason:= (FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: exit 5');
+{$ifend}
       Exit;
     end;
   end;
@@ -1091,6 +1264,10 @@ begin
   if (0=FGPSDeviceSessionStarted) then
     FGPSDeviceSessionStarted:=1;
   
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_StartSession: Done');
+{$ifend}
+
   Result:=TRUE;
 end;
 

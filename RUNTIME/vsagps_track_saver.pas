@@ -39,7 +39,7 @@ type
 
     // add string to log
     procedure InternalLogString(const ATrackType: TVSAGPS_TrackType;
-                                const AValue: String);
+                                const AValue: AnsiString);
   protected
     // active track types
     FActiveTrackTypes: TVSAGPS_TrackTypes;
@@ -69,25 +69,25 @@ type
     procedure Clear_FExecuteGPSCmd_WaypointData;
   protected
     // datetime for sasx
-    function InternalGetSasxLocalTime: String;
+    function InternalGetSasxLocalTime: AnsiString;
     // internal filename for sasx
-    function InternalGetSasxInternalFileName: String;
+    function InternalGetSasxInternalFileName: AnsiString;
     // make text for wpt and trkpt
     function InternalMakeGpxPointText(const pATP: Pvsagps_AddTrackPoint;
                                       const ANameTrackParam: TVSAGPS_TrackParam;
-                                      const ATagName: String;
-                                      const ATimeWithMSec: Boolean): String;
+                                      const ATagName: AnsiString;
+                                      const ATimeWithMSec: Boolean): AnsiString;
     // rountine for extensions and optional params
     function InternalGetTrackParamString(const pATP: Pvsagps_AddTrackPoint;
                                          const ATrackParam: TVSAGPS_TrackParam;
-                                         var AParamValue: String): Boolean;
+                                         var AParamValue: AnsiString): Boolean;
     // simple routine
     procedure InternalAddPredefinedExtensions_Simple(const CArr: TVSAGPS_GPX_Extension_Values;
-                                                     const SDelimiter, STail: String;
-                                                     var AResult: String);
+                                                     const SDelimiter, STail: AnsiString;
+                                                     var AResult: AnsiString);
 
   protected
-    // add pchar to log
+    // add PAnsiChar to log
     procedure InternalLogBuffer(const ATrackType: TVSAGPS_TrackType;
                                 const ABuffer: Pointer;
                                 const dwBufferSize: DWORD); virtual;
@@ -117,16 +117,16 @@ type
 
     // add low-level buffer
     procedure DoAddSerialized(const ATrackType: TVSAGPS_TrackType;
-                              const ABuffer: PChar;
+                              const ABuffer: PAnsiChar;
                               const dwLen: DWORD);
     // close all
     function InternalCloseALL: LongBool;
 
     // call user callback function for tag values
     procedure InternalRunCallback(const pATP: Pvsagps_AddTrackPoint;
-                                  var sResult: String;
+                                  var sResult: AnsiString;
                                   const tp: TVSAGPS_TrackParam;
-                                  const sTag: String);
+                                  const sTag: AnsiString);
 
     // set params externally
     function SetTrackerParams(const AParamType: Byte;
@@ -139,7 +139,7 @@ type
     function Active: LongBool; virtual;
 
     // add low-level packet
-    procedure AddPacket(const pBuffer: PChar;
+    procedure AddPacket(const pBuffer: PAnsiChar;
                         const dwLen: DWORD;
                         const pReserved: PDWORD);
 
@@ -223,7 +223,7 @@ begin
 end;
 
 procedure Tvsagps_track_saver.DoAddSerialized(const ATrackType: TVSAGPS_TrackType;
-                                              const ABuffer: PChar;
+                                              const ABuffer: PAnsiChar;
                                               const dwLen: DWORD);
 begin
   case ATrackType of
@@ -243,7 +243,7 @@ procedure Tvsagps_track_saver.DoAddTrackPoint(const ATrackType: TVSAGPS_TrackTyp
                                               const pATP: Pvsagps_AddTrackPoint);
 var
   bNewSeg: Boolean;
-  sRes: String;
+  sRes: AnsiString;
 begin
   // skip for low-level logs
   if (ATrackType in [ttNMEA, ttGarmin]) then
@@ -292,7 +292,7 @@ end;
 
 procedure Tvsagps_track_saver.DoAddWayPoint(const ATrackType: TVSAGPS_TrackType;
                                             const pATP: Pvsagps_AddTrackPoint);
-var sRes: String;
+var sRes: AnsiString;
 begin
   // skip for low-level logs
   if (ATrackType in [ttNMEA, ttGarmin]) then
@@ -327,7 +327,7 @@ begin
   Result:=(FActiveTrackTypes<>[]);
 end;
 
-procedure Tvsagps_track_saver.AddPacket(const pBuffer: PChar;
+procedure Tvsagps_track_saver.AddPacket(const pBuffer: PAnsiChar;
                                         const dwLen: DWORD;
                                         const pReserved: PDWORD);
 var i: TVSAGPS_TrackType;
@@ -415,7 +415,7 @@ end;
 
 procedure Tvsagps_track_saver.DoWriteTrkOpen(const ATrackType: TVSAGPS_TrackType;
                                              const pATP: Pvsagps_AddTrackPoint);
-var ss: String;
+var ss: AnsiString;
 begin
   // write header (if need)
   DoWriteGpxOpen(ATrackType, pATP);
@@ -507,7 +507,7 @@ end;
 
 procedure Tvsagps_track_saver.DoWriteGpxOpen(const ATrackType: TVSAGPS_TrackType;
                                              const pATP: Pvsagps_AddTrackPoint);
-var ss, si: String;
+var ss, si: AnsiString;
 begin
   if (not FTTP_GpxOpened[ATrackType]) then begin
     FTTP_GpxOpened[ATrackType] := TRUE;
@@ -602,14 +602,14 @@ begin
   end;
 end;
 
-function Tvsagps_track_saver.InternalGetSasxInternalFileName: String;
+function Tvsagps_track_saver.InternalGetSasxInternalFileName: AnsiString;
 begin
   SafeSetStringP(Result, FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
   if (0<Length(Result)) then
     Result:='<sasx:file_name>'+Result+'</sasx:file_name>'+#13#10;
 end;
 
-function Tvsagps_track_saver.InternalGetSasxLocalTime: String;
+function Tvsagps_track_saver.InternalGetSasxLocalTime: AnsiString;
 var
   st, lt: TSystemTime;
   sd, ld: TDateTime;
@@ -649,11 +649,11 @@ begin
 end;
 
 procedure Tvsagps_track_saver.InternalAddPredefinedExtensions_Simple(const CArr: TVSAGPS_GPX_Extension_Values;
-                                                                     const SDelimiter, STail: String;
-                                                                     var AResult: String);
+                                                                     const SDelimiter, STail: AnsiString;
+                                                                     var AResult: AnsiString);
 var
   i: TVSAGPS_GPX_Extension;
-  s: String;
+  s: AnsiString;
 begin
   for i := Low(TVSAGPS_GPX_Extension) to High(TVSAGPS_GPX_Extension) do
   if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btUse_Predefined_Extensions[i]) then begin
@@ -674,16 +674,16 @@ end;
 
 function Tvsagps_track_saver.InternalGetTrackParamString(const pATP: Pvsagps_AddTrackPoint;
                                                          const ATrackParam: TVSAGPS_TrackParam;
-                                                         var AParamValue: String): Boolean;
+                                                         var AParamValue: AnsiString): Boolean;
 
-  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: String);
+  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: AnsiString);
   begin
     if (not NoData_Float64(AValue)) then
       AParamValue:=AParamValue+'<'+ATagName+'>'+Round_Float64_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
   end;
 
   procedure _AddSatsInfo;
-  var s: String;
+  var s: AnsiString;
   begin
     if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_Sats_Info) then
     if (nil<>pATP^.szSatsInfo) then begin
@@ -810,17 +810,17 @@ begin
 end;
 
 procedure Tvsagps_track_saver.InternalLogString(const ATrackType: TVSAGPS_TrackType;
-                                                const AValue: String);
+                                                const AValue: AnsiString);
 begin
-  InternalLogBuffer(ATrackType, PChar(AValue), Length(AValue));
+  InternalLogBuffer(ATrackType, PAnsiChar(AValue), Length(AValue));
 end;
 
 function Tvsagps_track_saver.InternalMakeGpxPointText(const pATP: Pvsagps_AddTrackPoint;
                                                       const ANameTrackParam: TVSAGPS_TrackParam;
-                                                      const ATagName: String;
-                                                      const ATimeWithMSec: Boolean): String;
+                                                      const ATagName: AnsiString;
+                                                      const ATimeWithMSec: Boolean): AnsiString;
 var
-  si: String;
+  si: AnsiString;
 
   function _NextTP(aShift: Byte): TVSAGPS_TrackParam;
   begin
@@ -831,20 +831,20 @@ var
     end;
   end;
 
-  procedure _AddTP(aShift: Byte; const ASubTagName: String);
+  procedure _AddTP(aShift: Byte; const ASubTagName: AnsiString);
   var ntp: TVSAGPS_TrackParam;
   begin
     ntp:=_NextTP(aShift);
     InternalRunCallback(pATP, Result, ntp, ASubTagName);
   end;
 
-  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: String);
+  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: AnsiString);
   begin
     if (not NoData_Float64(AValue)) then
       Result:=Result+'<'+ATagName+'>'+Round_Float64_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
   end;
 
-  procedure _AddRoundFloat32(const AValue: Single; const ARound: ShortInt; const ATagName: String);
+  procedure _AddRoundFloat32(const AValue: Single; const ARound: ShortInt; const ATagName: AnsiString);
   begin
     if (not NoData_Float32(AValue)) then
       Result:=Result+'<'+ATagName+'>'+Round_Float32_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
@@ -955,10 +955,10 @@ end;
 
 procedure Tvsagps_track_saver.InternalRunCallback(
   const pATP: Pvsagps_AddTrackPoint;
-  var sResult: String;
+  var sResult: AnsiString;
   const tp: TVSAGPS_TrackParam;
-  const sTag: String);
-var si: String;
+  const sTag: AnsiString);
+var si: AnsiString;
 begin
   if (tp in FCallCallbackOnParams)
      OR

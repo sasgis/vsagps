@@ -253,12 +253,12 @@ type
   Product_Data_Type=record
     product_ID: Word;
     software_version: SmallInt;
-    product_description: Char; // ... zero or more additional null-terminated strings
+    product_description: AnsiChar; // ... zero or more additional null-terminated strings
   end;
   PProduct_Data_Type=^Product_Data_Type;
 
   Ext_Product_Data_Type=record
-    product_description: Char; // ... zero or more additional null-terminated strings
+    product_description: AnsiChar; // ... zero or more additional null-terminated strings
   end;
   PExt_Product_Data_Type=^Ext_Product_Data_Type;
 
@@ -371,7 +371,7 @@ The ‘trk_ident’ member has a maximum length of 51 characters including the termi
   D310_Trk_Hdr_Type=packed record
     dspl: Byte; // bool; // display on the map?
     color: uint8; // color (same as D108)
-    trk_ident: Char; // null-terminated string
+    trk_ident: AnsiChar; // null-terminated ansistring
   end;
   PD310_Trk_Hdr_Type=^D310_Trk_Hdr_Type;
 
@@ -387,7 +387,7 @@ The “color” member can be one of the following values: D110_clr_* constants + cl
   D312_Trk_Hdr_Type = packed record
     dspl: Byte; // bool; // display on the map?
     color: uint8; // color (see below)
-    trk_ident: Char; // char trk_ident[] // null-terminated string
+    trk_ident: AnsiChar; // ansichar trk_ident[] // null-terminated ansistring
   end;
   PD312_Trk_Hdr_Type = ^D312_Trk_Hdr_Type;
 
@@ -436,48 +436,48 @@ ete - Estimated time en route in seconds to next waypoint. Default value is 0xFF
 *)
 
   D100_Wpt_Type = packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
   end;
   PD100_Wpt_Type=^D100_Wpt_Type;
 
   D101_Wpt_Type = packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
     dst: float32; // proximity distance (meters)
     smbl: uint8; // symbol id
   end;
   PD101_Wpt_Type=^D101_Wpt_Type;
 
   D102_Wpt_Type=packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
     dst: float32; // proximity distance (meters)
     smbl: symbol_type; // symbol id
   end;
   PD102_Wpt_Type=^D102_Wpt_Type;
 
   D103_Wpt_Type = packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
     smbl: uint8; // symbol id
     dspl: uint8; // display option
   end;
   PD103_Wpt_Type=^D103_Wpt_Type;
 
   D104_Wpt_Type = packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
     dst: float32; // proximity distance (meters)
     smbl: symbol_type; // symbol id
     dspl: uint8; // display option
@@ -487,7 +487,7 @@ ete - Estimated time en route in seconds to next waypoint. Default value is 0xFF
   D105_Wpt_Type = packed record
     posn: position_type; // position
     smbl: symbol_type; // symbol id
-    wpt_ident: Char; // null-terminated string
+    wpt_ident: AnsiChar; // null-terminated string
   end;
   PD105_Wpt_Type=^D105_Wpt_Type;
 
@@ -496,8 +496,8 @@ ete - Estimated time en route in seconds to next waypoint. Default value is 0xFF
     subclass: packed array [0..12] of uint8; // subclass
     posn: position_type; // position
     smbl: symbol_type; // symbol id
-    wpt_ident: Char; // null-terminated string
-    lnk_ident: Char; // null-terminated string
+    wpt_ident: AnsiChar; // null-terminated string
+    lnk_ident: AnsiChar; // null-terminated string
   end;
   PD106_Wpt_Type=^D106_Wpt_Type;
 (* The enumerated values for the “wpt_class” member of the D106_Wpt_Type are as follows:
@@ -505,10 +505,10 @@ Zero: indicates a user waypoint (“subclass” is ignored).
 Non-zero: indicates a non-user waypoint (“subclass” must be valid). *)
 
   D107_Wpt_Type = packed record
-    ident: packed array [0..5] of char; // identifier
+    ident: packed array [0..5] of AnsiChar; // identifier
     posn: position_type; // position
     unused: uint32; // should be set to zero
-    cmnt: packed array [0..39] of char; // comment
+    cmnt: packed array [0..39] of AnsiChar; // comment
     smbl: uint8; // symbol id
     dspl: uint8; // display option
     dst: float32; // proximity distance (meters)
@@ -528,14 +528,14 @@ Non-zero: indicates a non-user waypoint (“subclass” must be valid). *)
     alt: float32; // altitude in meters
     dpth: float32; // depth in meters
     dst: float32; // proximity distance in meters
-    state: packed array [0..1] of char; // state
-    cc: packed array [0..1] of char; // country code
-    ident: char; // variable length string
-    comment: char; // waypoint user comment
-    facility: char; // facility name
-    city: char; // city name
-    addr: char; // address number
-    cross_road: char; // intersecting road label
+    state: packed array [0..1] of AnsiChar; // state
+    cc: packed array [0..1] of AnsiChar; // country code
+    ident: AnsiChar; // variable length string
+    comment: AnsiChar; // waypoint user comment
+    facility: AnsiChar; // facility name
+    city: AnsiChar; // city name
+    addr: AnsiChar; // address number
+    cross_road: AnsiChar; // intersecting road label
   end;
   PD108_Wpt_Type=^D108_Wpt_Type;
 
@@ -550,15 +550,15 @@ Non-zero: indicates a non-user waypoint (“subclass” must be valid). *)
     alt: float32; // altitude in meters
     dpth: float32; // depth in meters
     dst: float32; // proximity distance in meters
-    state: packed array [0..1] of char; // state
-    cc: packed array [0..1] of char; // country code
+    state: packed array [0..1] of AnsiChar; // state
+    cc: packed array [0..1] of AnsiChar; // country code
     ete: uint32; // outbound link ete in seconds
-    ident: char; // variable length string
-    comment: char; // waypoint user comment
-    facility: char; // facility name
-    city: char; // city name
-    addr: char; // address number
-    cross_road: char; // intersecting road label
+    ident: AnsiChar; // variable length string
+    comment: AnsiChar; // waypoint user comment
+    facility: AnsiChar; // facility name
+    city: AnsiChar; // city name
+    addr: AnsiChar; // address number
+    cross_road: AnsiChar; // intersecting road label
   end;
   PD109_Wpt_Type=^D109_Wpt_Type;
 
@@ -573,19 +573,19 @@ Non-zero: indicates a non-user waypoint (“subclass” must be valid). *)
     alt: float32; // altitude in meters
     dpth: float32; // depth in meters
     dst: float32; // proximity distance in meters
-    state: packed array [0..1] of char; // state
-    cc: packed array [0..1] of char; // country code
+    state: packed array [0..1] of AnsiChar; // state
+    cc: packed array [0..1] of AnsiChar; // country code
     ete: uint32; // outbound link ete in seconds
     temp: float32; // temperature */
     time: time_type; // timestamp */
     wpt_cat: uint16; // category membership */
     // null-terminated strings:
-    ident: char; // variable length string
-    comment: char; // waypoint user comment
-    facility: char; // facility name
-    city: char; // city name
-    addr: char; // address number
-    cross_road: char; // intersecting road label
+    ident: AnsiChar; // variable length string
+    comment: AnsiChar; // waypoint user comment
+    facility: AnsiChar; // facility name
+    city: AnsiChar; // city name
+    addr: AnsiChar; // address number
+    cross_road: AnsiChar; // intersecting road label
   end;
   PD110_Wpt_Type=^D110_Wpt_Type;
 (* All fields are defined the same as D109_Wpt_Type except as noted below.
@@ -726,13 +726,13 @@ There is no mechanism available for the host to determine whether a device requi
 must be prepared to receive unique or non-unique “cmnt” from the device. *)
   D201_Rte_Hdr_Type = packed record
     nmbr: uint8; // route number
-    cmnt: packed array [0..19] of char; // comment
+    cmnt: packed array [0..19] of AnsiChar; // comment
   end;
   PD201_Rte_Hdr_Type = ^D201_Rte_Hdr_Type;
 
 (* 7.4.20 D202_Rte_Hdr_Type *)
   D202_Rte_Hdr_Type = packed record
-    rte_ident: packed array [0..0] of char; // variable length string
+    rte_ident: packed array [0..0] of AnsiChar; // variable length string
   end;
   PD202_Rte_Hdr_Type = ^D202_Rte_Hdr_Type;
 
@@ -741,7 +741,7 @@ If “class” is set to “direct” or “snap”, subclass should be set to its default v
   D210_Rte_Link_Type = packed record
     rte_link_class: uint16; // link class; see below
     subclass: packed array [0..17] of Byte; // uint8; // subclass
-    ident: packed array [0..0] of char; // variable length string
+    ident: packed array [0..0] of AnsiChar; // variable length string
   end;
   PD210_Rte_Link_Type=^D210_Rte_Link_Type;
 
@@ -860,7 +860,7 @@ type
     index: uint16; // unique among all tracks received from device
     dspl: Byte; // bool; // display on the map?
     color: uint8; // color
-    trk_ident: PChar; // char trk_ident[] // null-terminated string
+    trk_ident: PAnsiChar; // ansichar trk_ident[] // null-terminated string
   end;
   PGeneric_Trk_Hdr_Type = ^TGeneric_Trk_Hdr_Type;
 
@@ -877,33 +877,33 @@ type
     alt: float32; // altitude in meters
     dpth: float32; // depth in meters
     dst: float32; // proximity distance in meters
-    state: packed array [0..1] of char; // state
-    cc: packed array [0..1] of char; // country code
+    state: packed array [0..1] of AnsiChar; // state
+    cc: packed array [0..1] of AnsiChar; // country code
     ete: uint32; // outbound link ete in seconds
     temp: float32; // temperature */
     time: time_type; // timestamp */
     wpt_cat: uint16; // category membership */
-    // pchar instead of char[] - NEVER FREE THIS POINTERS!
-    subclass: PChar; // subclass
-    ident: PChar; // variable length string
-    comment: PChar; // waypoint user comment
-    facility: PChar; // facility name
-    city: PChar; // city name
-    addr: PChar; // address number
-    cross_road: PChar; // intersecting road label
+    // PAnsiChar instead of AnsiChar[] - NEVER FREE THIS POINTERS!
+    subclass: PAnsiChar; // subclass
+    ident: PAnsiChar; // variable length string
+    comment: PAnsiChar; // waypoint user comment
+    facility: PAnsiChar; // facility name
+    city: PAnsiChar; // city name
+    addr: PAnsiChar; // address number
+    cross_road: PAnsiChar; // intersecting road label
     // from D108_Wpt_Type
     color: uint8; // color (see below)
     dspl: uint8; // display options (see below)
     // from D106_Wpt_Type
-    lnk_ident: PChar;
+    lnk_ident: PAnsiChar;
   end;
   PGeneric_Wpt_Type = ^TGeneric_Wpt_Type;
 
   // Generic Route Header Type (see above)
   TGeneric_Rte_Hdr_Type = packed record
     route_number: Byte; // uint8; // route number
-    cmnt: packed array [0..19] of char; // comment 20 bytes max
-    rte_ident: Char; // variable length string
+    cmnt: packed array [0..19] of AnsiChar; // comment 20 bytes max
+    rte_ident: AnsiChar; // variable length string
   end;
   PGeneric_Rte_Hdr_Type = ^TGeneric_Rte_Hdr_Type;
 

@@ -20,7 +20,7 @@ uses
 type
   // packed params with size of Double(=Float64) for working with sensors
   TSingleDGPSData = packed record
-    Nmea23_Mode: Char; // E for Dead Reckoning Mode, D for DGPS Mode, A for Autonomous P for PPS (+N+R)
+    Nmea23_Mode: AnsiChar; // E for Dead Reckoning Mode, D for DGPS Mode, A for Autonomous P for PPS (+N+R)
     Dimentions: Byte; // 2 or 3 (if ok)
     DGPS_Station_ID: SmallInt; // from 0000 to 1023
     DGPS_Age_Second: Single;
@@ -30,7 +30,7 @@ type
   // packed params with size of Double(=Float64) for working with sensors
   TSingleMagneticData = packed record
     variation_degree: Single;
-    variation_symbol: Char; // E or W
+    variation_symbol: AnsiChar; // E or W
     rezerved1: Byte;
     rezerved2: Word;
   end;
@@ -52,7 +52,7 @@ type
     DGPS: TSingleDGPSData;
     MagVar: TSingleMagneticData;
     FixStatus: Byte; // 0 - 1 - 2
-    NavMode: Char; // A or V (or #0 if no data)
+    NavMode: AnsiChar; // A or V (or #0 if no data)
     PositionOK: Boolean;
     UTCDateOK: Boolean;
     UTCTimeOK: Boolean;
@@ -95,10 +95,10 @@ type
   PFullTrackPointData = ^TFullTrackPointData;
 
   TExecuteGPSCmd_WaypointData = packed record
-    sz_sasx_file_name: PChar;
-    sz_cmt: PChar;
-    sz_desc: PChar;
-    sz_sym: PChar;
+    sz_sasx_file_name: PAnsiChar;
+    sz_cmt: PAnsiChar;
+    sz_desc: PAnsiChar;
+    sz_sym: PAnsiChar;
   end;
   PExecuteGPSCmd_WaypointData = ^TExecuteGPSCmd_WaypointData;
 
@@ -106,7 +106,7 @@ procedure InitSingleGPSData(p: PSingleGPSData); inline;
 
 function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
 
-function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): String;
+function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): AnsiString;
 
 implementation
 
@@ -117,7 +117,7 @@ end;
 
 function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
 var
-  b: PChar;
+  b: PAnsiChar;
   w: SmallInt;
 begin
   b := Pointer(p);
@@ -135,7 +135,7 @@ begin
   Result := FALSE;
 end;
 
-function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): String;
+function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): AnsiString;
 begin
   Result:='';
   if (nil<>p) then

@@ -54,7 +54,7 @@ type
     procedure Internal_Parse_Ext_Product_Data(const AData_Size: DWORD;
                                               const pData: PExt_Product_Data_Type);
   protected
-    procedure InternalCreateGarminIniParams(const AProductID, ADeviceInfo: String);
+    procedure InternalCreateGarminIniParams(const AProductID, ADeviceInfo: AnsiString);
     procedure InternalKillGarminIniParams;
     procedure InternalResetDeviceConnectionParams; override;
     procedure Internal_Before_Open_Device; override;
@@ -70,7 +70,7 @@ type
 
     procedure ExecuteGPSCommand(const ACommand: LongInt;
                                 const APointer: Pointer); override;
-    function SerializePacket(const APacket: Pointer): PChar; override;
+    function SerializePacket(const APacket: Pointer): PAnsiChar; override;
     function ParsePacket(const ABuffer: Pointer): DWORD; override;
 
     function SendPacket(const APacketBuffer: Pointer;
@@ -86,6 +86,7 @@ uses
   vsagps_ini,
   vsagps_runtime,
   vsagps_memory,
+  vsagps_public_debugstring,
   vsagps_public_unit_info;
 
 { Tvsagps_device_usb_garmin }
@@ -111,7 +112,7 @@ begin
   // gpsc_Refresh_DGPS - not supported
 end;
 
-procedure Tvsagps_device_usb_garmin.InternalCreateGarminIniParams(const AProductID, ADeviceInfo: String);
+procedure Tvsagps_device_usb_garmin.InternalCreateGarminIniParams(const AProductID, ADeviceInfo: AnsiString);
 var
   sl: TStringList;
   t: TGarminIniParams;
@@ -119,17 +120,17 @@ var
   VCheckDeviceInfo: Boolean;
   VMakeByCommon: Boolean;
 
-  function _GetBooleanFrom(const ASrcTailWithEq: String): Boolean;
+  function _GetBooleanFrom(const ASrcTailWithEq: AnsiString): Boolean;
   begin
     // 0 or empty - false, else - true
     Result:=(1<Length(ASrcTailWithEq)) and (ASrcTailWithEq[2]<>'0');
   end;
 
   // true if found
-  function _ReadSection(const ASectionNameUppercased: String; const bMain: Boolean): Boolean;
+  function _ReadSection(const ASectionNameUppercased: AnsiString; const bMain: Boolean): Boolean;
   var
     iSectionHeader: Integer;
-    sLine, sTail: String;
+    sLine, sTail: AnsiString;
   begin
     // get index of section header
     Result:=VSAGPS_ini_GetSectionHeader(sl, ASectionNameUppercased, iSectionHeader);
@@ -259,7 +260,7 @@ end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Product_Data(const AData_Size: DWORD; const pData: PProduct_Data_Type);
 var
-  VProductID, VDeviceInfo: String;
+  VProductID, VDeviceInfo: AnsiString;
 begin
   VDeviceInfo:='';
   VProductID:=IntToStr(pData^.product_ID);
@@ -281,7 +282,7 @@ end;
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Protocol_Array(AData_Size: DWORD; pData: PProtocol_Array_Type);
 var
   cur: PProtocol_Data_Type;
-  s: String;
+  s: AnsiString;
 begin
   if (FSupportedProtocols.Count>0) then
     Exit;
@@ -334,7 +335,7 @@ begin
   end;
 end;
 
-function Tvsagps_device_usb_garmin.SerializePacket(const APacket: Pointer): PChar;
+function Tvsagps_device_usb_garmin.SerializePacket(const APacket: Pointer): PAnsiChar;
 var dwLen: DWORD;
 begin
   dwLen:=PGarminUSB_Custom_Packet(APacket)^.Data_Size;
@@ -423,7 +424,7 @@ begin
       break;
   until FALSE;
 
-  bShouldReadMoreData:=((PT_Protocol_Layer=pPacket^.Packet_Type) and (Pid_Data_Available=pPacket^.Packet_ID));
+  bShouldReadMoreData:=((pPacket<>nil) and (PT_Protocol_Layer=pPacket^.Packet_Type) and (Pid_Data_Available=pPacket^.Packet_ID));
 
   // If this was a small "signal" packet, read a real packet using ReadFile
   if (_NoIOCTL) or
@@ -433,6 +434,13 @@ begin
     // packets until the driver returns a 0 size buffer.
     repeat
       Sleep(0);
+
+      if VSAGPS_WorkingThread_NeedToExit(@FWT_Params) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('Tvsagps_device_usb_garmin.WorkingThread_Receive_Packets: NeedToExit');
+{$ifend}
+        Exit;
+      end;
 
       // get packet
       pPacket:=ZwRecvReadPacket(@iosb);

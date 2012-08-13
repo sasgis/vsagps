@@ -75,7 +75,7 @@ type
                            geSASGIS,
                            geNMEA);
 
-  TVSAGPS_GPX_Extension_Values = array [TVSAGPS_GPX_Extension] of String;
+  TVSAGPS_GPX_Extension_Values = array [TVSAGPS_GPX_Extension] of AnsiString;
 
   TVSAGPS_arr_TrackType_DWORD = array [TVSAGPS_TrackType] of DWORD;
   PVSAGPS_arr_TrackType_DWORD = ^TVSAGPS_arr_TrackType_DWORD;
@@ -130,7 +130,7 @@ type
   TVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS = packed record
     wSize: SmallInt;
     wReserved: SmallInt;
-    AStrResult: PChar; // allocated by DLL and released by EXE (even if not UseResult)
+    AStrResult: PAnsiChar; // allocated by DLL and released by EXE (even if not UseResult)
     WStrResult: PWideChar; // reserved
     UseResult: WordBool;
     UsePredefined: WordBool;

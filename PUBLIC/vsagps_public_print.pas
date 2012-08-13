@@ -38,17 +38,17 @@ const
 
 function Round_Float32_to_String(const f: Float32;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt=Low(TRoundToRange)): String;
+                                 const dec_round: ShortInt=Low(TRoundToRange)): AnsiString;
 function Round_Float64_to_String(const f: Float64;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt=Low(TRoundToRange)): String;
+                                 const dec_round: ShortInt=Low(TRoundToRange)): AnsiString;
 
 procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);
 
 implementation
 
-procedure do_after_to_str(var str_res: String; const fs: TFormatSettings);
-  function _DS(const aChr: Char): Boolean;
+procedure do_after_to_str(var str_res: AnsiString; const fs: TFormatSettings);
+  function _DS(const aChr: AnsiChar): Boolean;
   begin
     Result:=((aChr=DecimalSeparator) or (aChr=fs.DecimalSeparator));
   end;
@@ -70,7 +70,7 @@ end;
 
 function Round_Float32_to_String(const f: Float32;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt): String;
+                                 const dec_round: ShortInt): AnsiString;
 var j: Double;
 begin
   if NoData_Float32(f) then
@@ -93,7 +93,7 @@ end;
 
 function Round_Float64_to_String(const f: Float64;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt): String;
+                                 const dec_round: ShortInt): AnsiString;
 var j: Double;
 begin
   if NoData_Float64(f) then

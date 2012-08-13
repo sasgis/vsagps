@@ -36,7 +36,7 @@ const
   cNmea_Tail        = #13#10;  
 
 type
-  TNmeaParserProc = function (const AData, ASubCommand: String): DWORD of object;
+  TNmeaParserProc = function (const AData, ASubCommand: AnsiString): DWORD of object;
 
   TNmeaProprietary = record
     ParserProc: TNmeaParserProc;
@@ -78,13 +78,15 @@ type
     FFormatSettings: TFormatSettings;
     FProprietaries: array [Tgpms_Code] of TNmeaProprietary;
   protected
-    function Internal_Parse_NmeaComm_Base_Sentence(const ANmeaBaseString: String;
-                                                   const AProprietaryWithoutFinisher: Boolean): DWORD;
-    function Internal_Parse_NmeaComm_Talker_Sentence(const ATalkerID, ACommandID, AData: String): DWORD;
-    function Internal_Parse_NmeaComm_Proprietary_Sentence(const ACommandID, AData: String): DWORD;
+    function Internal_Parse_NmeaComm_Base_Sentence(
+      const ANmeaBaseString: AnsiString;
+      const AProprietaryWithoutFinisher: Boolean
+    ): DWORD;
+    function Internal_Parse_NmeaComm_Talker_Sentence(const ATalkerID, ACommandID, AData: AnsiString): DWORD;
+    function Internal_Parse_NmeaComm_Proprietary_Sentence(const ACommandID, AData: AnsiString): DWORD;
   protected
     // helper routines
-    procedure Parse_NMEA_Char(const AIndex: Byte; const AChar: PChar);
+    procedure Parse_NMEA_Char(const AIndex: Byte; const AChar: PAnsiChar);
     procedure Parse_NMEA_Coord(const AIndexCoord, AIndexSymbol: Byte; const ACoord: PNMEA_Coord);
     procedure Parse_NMEA_Date(const AIndex: Byte; const ADate: PNMEA_Date);
     procedure Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
@@ -94,17 +96,17 @@ type
     procedure Parse_NMEA_SInt8(const AIndex: Byte; const ASInt8: PSInt8);
     procedure Parse_NMEA_Time(const AIndex: Byte; const ATime: PNMEA_Time);
     // supported talker sentences
-    function Parse_and_Send_GGA_Data(const AData, ATalkerID: String): DWORD;
-    function Parse_and_Send_GLL_Data(const AData, ATalkerID: String): DWORD;
-    function Parse_and_Send_GSA_Data(const AData, ATalkerID: String): DWORD;
-    function Parse_and_Send_GSV_Data(const AData, ATalkerID: String): DWORD;
-    function Parse_and_Send_RMC_Data(const AData, ATalkerID: String): DWORD;
-    function Parse_and_Send_VTG_Data(const AData, ATalkerID: String): DWORD;
+    function Parse_and_Send_GGA_Data(const AData, ATalkerID: AnsiString): DWORD;
+    function Parse_and_Send_GLL_Data(const AData, ATalkerID: AnsiString): DWORD;
+    function Parse_and_Send_GSA_Data(const AData, ATalkerID: AnsiString): DWORD;
+    function Parse_and_Send_GSV_Data(const AData, ATalkerID: AnsiString): DWORD;
+    function Parse_and_Send_RMC_Data(const AData, ATalkerID: AnsiString): DWORD;
+    function Parse_and_Send_VTG_Data(const AData, ATalkerID: AnsiString): DWORD;
   public
     constructor Create;
 
-    function Get_NMEAPart_By_Index(const AIndex: Byte): String;
-    function Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: String): DWORD;
+    function Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
+    function Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: AnsiString): DWORD;
     // initialize special counters
     procedure InitSpecialNmeaCounters;
     // enable subcode
@@ -115,28 +117,34 @@ type
   end;
 
 // calc checksum
-function CalcNmeaChecksum(const ANmeaBaseString: String): Byte;
+function CalcNmeaChecksum(const ANmeaBaseString: AnsiString): Byte;
 
 // calc checksum and add $ and the tail
-function MakeNmeaFullString(const ANmeaBaseString: String): String;
+function MakeNmeaFullString(const ANmeaBaseString: AnsiString): AnsiString;
 
 // create nmea query sentence
-function MakeNmeaBaseQuerySentence(const ANmeaTalkerIdSrc, ANmeaTalkerIdDst: String; const ANmeaSentenceId: String): String;
+function MakeNmeaBaseQuerySentence(
+  const ANmeaTalkerIdSrc, ANmeaTalkerIdDst: AnsiString;
+  const ANmeaSentenceId: AnsiString
+): AnsiString;
 
 // extract nmea data and check checksum (if exists)
-function ExtractNmeaBaseString(const ANmeaFullString: String;
+function ExtractNmeaBaseString(const ANmeaFullString: AnsiString;
                                const ACheckNmeaStarter: Boolean;
-                               var ANmeaBaseString: String;
+                               var ANmeaBaseString: AnsiString;
                                var AChecksumFound: Boolean;
                                var AChecksumMatched: Boolean;
                                var AProprietaryWithoutFinisher: Boolean): Boolean;
 
 // parse nmea string coordinates (without symbol)
-procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
+procedure NMEA_Parse_Coord(const ACoordValue: AnsiString; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
 
 implementation
 
-function CalcNmeaChecksum(const ANmeaBaseString: String): Byte;
+uses
+  vsagps_public_debugstring;
+
+function CalcNmeaChecksum(const ANmeaBaseString: AnsiString): Byte;
 var i: DWORD;
 begin
   Result:=0;
@@ -145,21 +153,24 @@ begin
   Result:=(Result xor Ord(ANmeaBaseString[i]));
 end;
 
-function MakeNmeaFullString(const ANmeaBaseString: String): String;
+function MakeNmeaFullString(const ANmeaBaseString: AnsiString): AnsiString;
 var chksum: Byte;
 begin
   chksum:=CalcNmeaChecksum(ANmeaBaseString);
   Result:=cNmea_Starter+ANmeaBaseString+cNmea_Finisher+IntToHex(chksum,2)+cNmea_Tail;
 end;
 
-function MakeNmeaBaseQuerySentence(const ANmeaTalkerIdSrc, ANmeaTalkerIdDst: String; const ANmeaSentenceId: String): String;
+function MakeNmeaBaseQuerySentence(
+  const ANmeaTalkerIdSrc, ANmeaTalkerIdDst: AnsiString;
+  const ANmeaSentenceId: AnsiString
+): AnsiString;
 begin
   Result:=ANmeaTalkerIdSrc+ANmeaTalkerIdDst+cNmea_Query+cNmea_Separator+ANmeaSentenceId;
 end;
 
-function ExtractNmeaBaseString(const ANmeaFullString: String;
+function ExtractNmeaBaseString(const ANmeaFullString: AnsiString;
                                const ACheckNmeaStarter: Boolean;
-                               var ANmeaBaseString: String;
+                               var ANmeaBaseString: AnsiString;
                                var AChecksumFound: Boolean;
                                var AChecksumMatched: Boolean;
                                var AProprietaryWithoutFinisher: Boolean): Boolean;
@@ -168,7 +179,7 @@ function ExtractNmeaBaseString(const ANmeaFullString: String;
     Result:=(0=Length(ANmeaBaseString))
   end;
 
-  function _SameChecksums(const cs1: String; const cs2: Byte): Boolean;
+  function _SameChecksums(const cs1: AnsiString; const cs2: Byte): Boolean;
   var n,m: Integer;
   begin
     if TryStrToInt('0x'+cs1, n) then begin
@@ -179,7 +190,7 @@ function ExtractNmeaBaseString(const ANmeaFullString: String;
   end;
 
 var
-  test_str: String;
+  test_str: AnsiString;
   i: Integer;
 begin
   Result:=FALSE;
@@ -249,16 +260,16 @@ begin
   end;
 end;
 
-procedure NMEA_Parse_Coord(const ACoordValue: String; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
+procedure NMEA_Parse_Coord(const ACoordValue: AnsiString; const ACoord: PNMEA_Coord; const fs: TFormatSettings);
   procedure _SetNoData;
   begin
     ACoord^.deg:=$FF;
   end;
 var
-  g: String;
+  g: AnsiString;
   p: Integer;
 
-  procedure _MinutesToFloat(const s: String);
+  procedure _MinutesToFloat(const s: AnsiString);
   begin
     ACoord^.min:=StrToFloat(s, fs);
   end;
@@ -325,7 +336,7 @@ begin
   FProprietaries[ACode].SubCode := (FProprietaries[ACode].SubCode or ASubCode);
 end;
 
-function Tvsagps_parser_nmea.Get_NMEAPart_By_Index(const AIndex: Byte): String;
+function Tvsagps_parser_nmea.Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
 begin
   if (AIndex>=Self.Count) then
     Result:=''
@@ -342,10 +353,13 @@ begin
   FGNGSANmeaCounter:=0;
 end;
 
-function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Base_Sentence(const ANmeaBaseString: String; const AProprietaryWithoutFinisher: Boolean): DWORD;
+function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Base_Sentence(
+  const ANmeaBaseString: AnsiString;
+  const AProprietaryWithoutFinisher: Boolean
+): DWORD;
 var
   pComma: Integer;
-  Vcommand, Vdata: String;
+  Vcommand, Vdata: AnsiString;
 
   procedure _DoProprietary;
   begin
@@ -360,7 +374,7 @@ var
   end;
 
   procedure _DoTalker;
-  var Vtalkerid: String;
+  var Vtalkerid: AnsiString;
   begin
     // nmea talker sentence
     if (4<Length(Vcommand)) then begin
@@ -395,9 +409,9 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Proprietary_Sentence(const ACommandID, AData: String): DWORD;
+function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Proprietary_Sentence(const ACommandID, AData: AnsiString): DWORD;
 var
-  VMajorCmd, VMinorCmd: String;
+  VMajorCmd, VMinorCmd: AnsiString;
   Vgpms: Tgpms_Code;
 begin
   Result:=0;
@@ -425,7 +439,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Talker_Sentence(const ATalkerID, ACommandID, AData: String): DWORD;
+function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Talker_Sentence(const ATalkerID, ACommandID, AData: AnsiString): DWORD;
 var p: TNmeaParserProc;
 begin
   Result:=0;
@@ -468,7 +482,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_GGA_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_GGA_Data(const AData, ATalkerID: AnsiString): DWORD;
 var h: TNMEA_GGA;
 begin
   Result:=0;
@@ -516,7 +530,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_GLL_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_GLL_Data(const AData, ATalkerID: AnsiString): DWORD;
 var h: TNMEA_GLL;
 begin
   Result:=0;
@@ -551,7 +565,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_GSA_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_GSA_Data(const AData, ATalkerID: AnsiString): DWORD;
 var
   h: TNMEA_GSA;
   i,k: Byte;
@@ -632,7 +646,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_GSV_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_GSV_Data(const AData, ATalkerID: AnsiString): DWORD;
 var
   h: TNMEA_GSV;
   i,j: Byte;
@@ -697,7 +711,7 @@ begin
   pPrevGSV^ := h.msg_cur;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_RMC_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_RMC_Data(const AData, ATalkerID: AnsiString): DWORD;
 var h: TNMEA_RMC;
 begin
   Result:=0;
@@ -739,7 +753,7 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_and_Send_VTG_Data(const AData, ATalkerID: String): DWORD;
+function Tvsagps_parser_nmea.Parse_and_Send_VTG_Data(const AData, ATalkerID: AnsiString): DWORD;
 {$if defined(USE_NMEA_VTG)}
 var h: TNMEA_VTG;
 {$ifend}
@@ -777,8 +791,8 @@ begin
 {$ifend}
 end;
 
-procedure Tvsagps_parser_nmea.Parse_NMEA_Char(const AIndex: Byte; const AChar: PChar);
-var s: String;
+procedure Tvsagps_parser_nmea.Parse_NMEA_Char(const AIndex: Byte; const AChar: PAnsiChar);
+var s: AnsiString;
 begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
@@ -802,7 +816,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_Date(const AIndex: Byte; const ADate: P
     ADate^.day:=0;
   end;
 var
-  s: String;
+  s: AnsiString;
 begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (6=Length(s)) then
@@ -825,7 +839,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_Float32(const AIndex: Byte; const AFloa
     AFloat32^:=cGps_Float32_no_data;
   end;
 var
-  s: String;
+  s: AnsiString;
 begin
   try
     s:=Get_NMEAPart_By_Index(AIndex);
@@ -859,7 +873,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_SatID(const AIndex: Byte; const APtrSat
     APtrSatID^.constellation_flag:=0;
   end;
 var
-  s: String;
+  s: AnsiString;
 begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
@@ -879,7 +893,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_SInt16(const AIndex: Byte; const ASInt1
     ASInt16^:=-1;
   end;
 var
-  s: String;
+  s: AnsiString;
 begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
@@ -899,7 +913,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_SInt8(const AIndex: Byte; const ASInt8:
     ASInt8^:=-1;
   end;
 var
-  s: String;
+  s: AnsiString;
 begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
@@ -921,7 +935,7 @@ procedure Tvsagps_parser_nmea.Parse_NMEA_Time(const AIndex: Byte; const ATime: P
   end;
 
 var
-  s: String;
+  s: AnsiString;
   p: Integer;
 
   procedure _SetHHMMSS;
@@ -973,13 +987,17 @@ begin
   end;
 end;
 
-function Tvsagps_parser_nmea.Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: String): DWORD;
+function Tvsagps_parser_nmea.Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: AnsiString): DWORD;
 var
-  VNmeaBaseString: String;
+  VNmeaBaseString: AnsiString;
   VChecksumFound: Boolean;
   VChecksumMatched: Boolean;
   AProprietaryWithoutFinisher: Boolean;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_parser_nmea.Parse_Sentence_Without_Starter: "' + ANmeaFullStringWithoutStarter + '"');
+{$ifend}
+
   Result:=0;
   if (0=Length(ANmeaFullStringWithoutStarter)) then
     Exit;

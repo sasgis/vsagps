@@ -5,6 +5,9 @@
 (*
 *)
 
+
+//////{$define VSAGPS_USE_DEBUG_STRING}
+
 //////{$define USE_NMEA_VTG}
 
 //////{$define USE_SIMPLE_CLASSES}

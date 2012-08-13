@@ -82,14 +82,14 @@ const
   // Siemens
   // RoyalTek
 
-function Gpms_Code_to_String(const ACode: Tgpms_Code): String;
+function Gpms_Code_to_String(const ACode: Tgpms_Code): AnsiString;
 
-function String_to_Gpms_Code(const ACode: String): Tgpms_Code;
+function String_to_Gpms_Code(const ACode: AnsiString): Tgpms_Code;
   
 implementation
 
 const
-  g_gpms_Codes: array [Tgpms_Code] of String = (
+  g_gpms_Codes: array [Tgpms_Code] of AnsiString = (
   '',
   'SRF',
   'GRM',
@@ -123,12 +123,12 @@ const
   ''
   );
 
-function Gpms_Code_to_String(const ACode: Tgpms_Code): String;
+function Gpms_Code_to_String(const ACode: Tgpms_Code): AnsiString;
 begin
   Result := g_gpms_Codes[ACode];
 end;
 
-function String_To_Gpms_Code(const ACode: String): Tgpms_Code;
+function String_To_Gpms_Code(const ACode: AnsiString): Tgpms_Code;
 begin
   Result := gpms_Some;
   repeat

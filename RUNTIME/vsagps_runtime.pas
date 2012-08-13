@@ -58,7 +58,7 @@ type
 
   SP_DEVICE_INTERFACE_DETAIL_DATA_A = packed record
     cbSize: DWORD;
-    DevicePath: Char; // A NULL-terminated string that contains the device interface path
+    DevicePath: AnsiChar; // A NULL-terminated string that contains the device interface path
   end;
   PSP_DEVICE_INTERFACE_DETAIL_DATA_A = ^SP_DEVICE_INTERFACE_DETAIL_DATA_A;
 
@@ -157,7 +157,7 @@ const
 type
 // returns handle
   TSetupDiGetClassDevsA = function (ClassGuid: PGUID;
-                                    Enumerator: PChar;
+                                    Enumerator: PAnsiChar;
                                     hwndParent: HWND;
                                     Flags: DWORD
                                     ): HDEVINFO; stdcall; // external setupapi_dll;
@@ -515,7 +515,7 @@ var
   theInterfaceData: SP_DEVICE_INTERFACE_DATA;
   theDevDetailData: PSP_DEVICE_INTERFACE_DETAIL_DATA_A;
   theDevInfoData: SP_DEVINFO_DATA;
-  str_dev_name: String;
+  str_dev_name: AnsiString;
   VMemberIndex: DWORD;
 begin
   Result:=0;
@@ -587,7 +587,7 @@ begin
             if bDiResult then begin
               // save info to list
               dwErr:=StrLen(@(theDevDetailData^.DevicePath));
-              SetString(str_dev_name, PChar(@(theDevDetailData^.DevicePath)), dwErr);
+              SetString(str_dev_name, PAnsiChar(@(theDevDetailData^.DevicePath)), dwErr);
               //if sl_names.IndexOf(str_dev_name)>=0 then
                 //break;
               sl_container.Append(str_dev_name);

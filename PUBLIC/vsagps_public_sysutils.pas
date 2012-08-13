@@ -17,7 +17,7 @@ uses
   SysUtils;
 
 type
-  TVSAGPS_DivideStringToLines_Proc = procedure (const ALine: String; const AUserPtr: Pointer) of object;
+  TVSAGPS_DivideStringToLines_Proc = procedure (const ALine: AnsiString; const AUserPtr: Pointer) of object;
   TVSAGPS_DivideWideStringToLines_Proc = procedure (const ALine: WideString; const AUserPtr: Pointer) of object;
 
 function StrLenW(Src: PWideChar): DWORD;
@@ -28,13 +28,13 @@ function VSAGPS_CreateFileW(const phFile: PHandle;
 
 function VSAGPS_GetFileSize(const hFile: THandle; var iSize: Int64): Boolean;
 
-procedure SafeSetStringP(var S: String; Buffer: PChar);
-procedure SafeSetStringL(var S: String; Buffer: PChar; Length: Integer);
+procedure SafeSetStringP(var S: AnsiString; Buffer: PAnsiChar);
+procedure SafeSetStringL(var S: AnsiString; Buffer: PAnsiChar; Length: Integer);
 
 procedure SafeSetWideStringP(var WS: WideString; WBuffer: PWideChar);
 procedure SafeSetWideStringL(var WS: WideString; WBuffer: PWideChar; Length: Integer);
 
-procedure VSAGPS_DividePCharToLines(const APChar: PChar;
+procedure VSAGPS_DividePCharToLines(const ASource: PAnsiChar;
                                     const AProc: TVSAGPS_DivideStringToLines_Proc;
                                     const AUserPtr: Pointer;
                                     const ADivOnSpacesToo: Boolean;
@@ -113,7 +113,7 @@ begin
   end;
 end;
 
-procedure SafeSetStringP(var S: String; Buffer: PChar);
+procedure SafeSetStringP(var S: AnsiString; Buffer: PAnsiChar);
 var L: Integer;
 begin
   if (nil=Buffer) then
@@ -127,7 +127,7 @@ begin
   end;
 end;
 
-procedure SafeSetStringL(var S: String; Buffer: PChar; Length: Integer);
+procedure SafeSetStringL(var S: AnsiString; Buffer: PAnsiChar; Length: Integer);
 begin
   if (nil=Buffer) or (0=Length) then
     S:=''
@@ -157,18 +157,18 @@ begin
     SetString(WS, WBuffer, Length);
 end;
 
-procedure VSAGPS_DividePCharToLines(const APChar: PChar;
+procedure VSAGPS_DividePCharToLines(const ASource: PAnsiChar;
                                     const AProc: TVSAGPS_DivideStringToLines_Proc;
                                     const AUserPtr: Pointer;
                                     const ADivOnSpacesToo: Boolean;
                                     ApExitIfSet: PBoolean);
 var
-  p,pStart: PChar;
-  str_line: String;
+  p,pStart: PAnsiChar;
+  str_line: AnsiString;
 begin
-  if (nil=APChar) then
+  if (nil=ASource) then
     Exit;
-  p:=APChar;
+  p:=ASource;
   // find lines
   while (#0<>p^) do begin
     // check if aborted by user

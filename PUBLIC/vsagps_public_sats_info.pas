@@ -19,14 +19,14 @@ uses
   vsagps_public_position;
 
 // convert satellite state info to string
-function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): String;
+function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): AnsiString;
 
 // make all sats state info from string
 function DeserializeSatsInfo(const pInfo: PWideChar; pFTP: PFullTrackPointData): Boolean;
 
 implementation
 
-function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): String;
+function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): AnsiString;
 begin
   Result := IntToHex(Byte(bsp^.sat_info.svid),2)+
             IntToHex(Byte(bsp^.sat_info.constellation_flag),2)+

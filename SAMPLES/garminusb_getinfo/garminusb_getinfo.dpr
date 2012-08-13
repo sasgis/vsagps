@@ -50,7 +50,7 @@ type
     procedure CheckPVTCounter;
   end;
 
-function STtoString(const st: Tvsagps_GPSState): String;
+function STtoString(const st: Tvsagps_GPSState): AnsiString;
 begin
   case st of
     gs_ProcessConnecting: Result:='Connecting';
@@ -62,17 +62,17 @@ begin
   end;
 end;
   
-procedure StrW(var result_str: String; const wid: Integer; const ch: Char);
+procedure StrW(var result_str: AnsiString; const wid: Integer; const ch: AnsiChar);
 begin
   while Length(result_str)<wid do
     result_str:=ch+result_str;
 end;
 
-function ByteToBinW(bt: Byte; const wid: Integer): String;
+function ByteToBinW(bt: Byte; const wid: Integer): AnsiString;
 begin
   Result := '';
   while (bt<>0) do begin
-    Result := Char(Ord('0')+(bt and 1)) + Result;
+    Result := AnsiChar(Ord('0')+(bt and 1)) + Result;
     bt := bt shr 1;
   end;
   if (0=Length(Result)) then
@@ -80,15 +80,15 @@ begin
   StrW(Result,wid,'0');
 end;
 
-function IntToStrW(i: Integer; const wid: Integer): String;
+function IntToStrW(i: Integer; const wid: Integer): AnsiString;
 begin
   Result:=IntToStr(i);
   StrW(Result,wid,' ');
 end;
 
-procedure PrintAndKill(p: PChar; bUnitInfo: Boolean);
+procedure PrintAndKill(p: PAnsiChar; bUnitInfo: Boolean);
 var
-  S: String;
+  S: AnsiString;
   k: Integer;
   i: TVSAGPS_UNIT_INFO_Kind;
   sl: TStringList;

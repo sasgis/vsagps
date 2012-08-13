@@ -19,7 +19,7 @@ type
   TExecuteGPSCommandEvent = function (Sender: TObject;
                                       const AUnitIndex: Byte;
                                       const ACommand: LongInt;
-                                      const APointer: Pointer): String of object;
+                                      const APointer: Pointer): AnsiString of object;
 
   TVSAGPS_UNIT_INFO_Changed_Event = procedure (Sender: TObject;
                                                const AUnitIndex: Byte;
@@ -35,12 +35,12 @@ type
   TCOMAutodetect_DLL_Proc = procedure(pUserPointer: Pointer; pRezerved: Pointer); stdcall;
 
   TCOMCheckerReadEvent = procedure(Sender: TObject;
-                                   const ABuffer: PChar;
+                                   const ABuffer: PAnsiChar;
                                    const ALength: DWORD;
                                    pBufferOK: PLongBool) of object;
 
   TCOMCheckerRead_DLL_Proc = procedure(pUserPointer: Pointer;
-                                       const ABuffer: PChar;
+                                       const ABuffer: PAnsiChar;
                                        const ALength: DWORD;
                                        pBufferOK: PLongBool); stdcall;
                                    

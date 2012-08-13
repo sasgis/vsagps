@@ -39,8 +39,8 @@ type
     function GetTextStr: WideString;
     procedure SetTextStr(const AValue: WideString);
   public
-    procedure Append(const S: String);
-    procedure AppendPChar(const S: PChar);
+    procedure Append(const S: AnsiString);
+    procedure AppendPChar(const S: PAnsiChar);
 
     property Text: WideString read GetTextStr write SetTextStr;
     property Items[const AIndex: Integer]: WideString read GetListItem; default;

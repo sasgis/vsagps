@@ -52,9 +52,9 @@ type
     procedure Internal_RunForList(const ASource: WideString; const ASelfAuxPtr: Pointer);
     // nmea track parser
     procedure InternalParseTrackLines(const ASrcFileName: WideString; const ALineParserProc: TVSAGPS_DivideStringToLines_Proc);
-    procedure InternalLineParser_Garmin(const ALine: String; const ASelfAuxPtr: Pointer);
-    procedure InternalLineParser_NMEA(const ALine: String; const ASelfAuxPtr: Pointer);
-    procedure InternalLineParser_PLT(const ALine: String; const ASelfAuxPtr: Pointer);
+    procedure InternalLineParser_Garmin(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
+    procedure InternalLineParser_NMEA(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
+    procedure InternalLineParser_PLT(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalKMLCoordsParser(const ACoordinate: WideString; const ASelfAuxPtr: Pointer);
     // callback proc for xml parser
     procedure ParseGPX_UserProc(const pPX_options: Pvsagps_XML_ParserOptions;
@@ -73,7 +73,7 @@ type
     constructor Create(const APtrSourceFiles: PWideChar); reintroduce;
     destructor Destroy; override;
 
-    function SerializePacket(const APacket: Pointer): PChar; override;
+    function SerializePacket(const APacket: Pointer): PAnsiChar; override;
     function ParsePacket(const ABuffer: Pointer): DWORD; override;
 
     function SendPacket(const APacketBuffer: Pointer;
@@ -170,7 +170,7 @@ begin
   end;
 end;
 
-procedure Tvsagps_track_reader.InternalLineParser_Garmin(const ALine: String; const ASelfAuxPtr: Pointer);
+procedure Tvsagps_track_reader.InternalLineParser_Garmin(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
 var
   buf_ptr: PByte;
 begin
@@ -187,8 +187,8 @@ begin
   end;
 end;
 
-procedure Tvsagps_track_reader.InternalLineParser_NMEA(const ALine: String; const ASelfAuxPtr: Pointer);
-var S: String;
+procedure Tvsagps_track_reader.InternalLineParser_NMEA(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
+var S: AnsiString;
 begin
   InternalCreateNmeaParser;
   // del starter and call parser
@@ -202,7 +202,7 @@ begin
   end;
 end;
 
-procedure Tvsagps_track_reader.InternalLineParser_PLT(const ALine: String; const ASelfAuxPtr: Pointer);
+procedure Tvsagps_track_reader.InternalLineParser_PLT(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
 var
   pPacket: PSingleTrackPointData;
   tData: TCoordLineData;
@@ -301,7 +301,7 @@ procedure Tvsagps_track_reader.InternalParseTrackLines(const ASrcFileName: WideS
 var
   h: THandle;
   iSize: Int64;
-  s: String;
+  s: AnsiString;
   dwRead: DWORD;
 begin
   if VSAGPS_CreateFileW(@h, PWideChar(ASrcFileName), TRUE) then
@@ -309,7 +309,7 @@ begin
     if VSAGPS_GetFileSize(h, iSize) then
     if (0=Int64Rec(iSize).Hi) then begin // do not open huge files
       SetLength(s, Int64Rec(iSize).Lo);
-      if not ReadFile(h, PChar(s)^, Int64Rec(iSize).Lo, dwRead, nil) then
+      if not ReadFile(h, PAnsiChar(s)^, Int64Rec(iSize).Lo, dwRead, nil) then
         s:='';
     end;
   finally
@@ -318,7 +318,7 @@ begin
 
   if (0<Length(s)) then begin
     // parse text (divide into lines)
-    VSAGPS_DividePCharToLines(PChar(s), ALineParserProc, nil, FALSE, @(FWT_Params.bAskToExit));
+    VSAGPS_DividePCharToLines(PAnsiChar(s), ALineParserProc, nil, FALSE, @(FWT_Params.bAskToExit));
   end;
 end;
 
@@ -551,7 +551,7 @@ begin
   Result:=FALSE;
 end;
 
-function Tvsagps_track_reader.SerializePacket(const APacket: Pointer): PChar;
+function Tvsagps_track_reader.SerializePacket(const APacket: Pointer): PAnsiChar;
 begin
   Result:=nil;
 end;

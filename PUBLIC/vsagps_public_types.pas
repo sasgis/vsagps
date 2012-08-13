@@ -130,7 +130,7 @@ type
   Pcpo_all_sat_data=^cpo_all_sat_data;
 
 type
-  // nmea char = #0 means no nmea data!
+  // nmea ansichar = #0 means no nmea data!
   // for float32 used 1E25
   // others - see in-place info
 
@@ -158,7 +158,7 @@ type
   TNMEA_Coord = packed record
     deg: Byte; // 0xFF - no data
     min: Float64;
-    sym: Char; // #0 no data
+    sym: AnsiChar; // #0 no data
   end;
   PNMEA_Coord = ^TNMEA_Coord;
 
@@ -182,11 +182,11 @@ type
     // 9) Antenna Altitude above/below mean-sea-level (geoid)
     alt_from_msl: Float32;
     // 10) Units of antenna altitude, meters // #0 no data
-    alt_unit: Char;
+    alt_unit: AnsiChar;
     // 11) Geoidal separation, the difference between the WGS-84 earth ellipsoid and mean-sea-level (geoid), "-" means mean-sea-level below ellipsoid
     msl_above_ellipsoid: Float32; // for GPX.geoidheight
     // 12) Units of geoidal separation, meters // #0 no data
-    ele_unit: Char;
+    ele_unit: AnsiChar;
     // 13) Age of differential GPS data, time in seconds since last SC104 type 1 or 9 update, null field when DGPS is not used // <0 no data
     dgps_age_second: Float32;
     // 14) Differential reference station ID, 0000-1023 // <0 no data
@@ -206,9 +206,9 @@ type
     // 5) Time (UTC)
     time: TNMEA_Time;
     // 6) Status A - Data Valid, V - Data Invalid
-    status: Char;
+    status: AnsiChar;
     // 7) Mode A=Autonomous, D=DGPS, E=DR, N = Output Data Not Valid, R = Coarse Position // NMEA version 2.3 (and later)
-    nmea23_mode: Char;
+    nmea23_mode: AnsiChar;
   end;
   PNMEA_GLL = ^TNMEA_GLL;
 
@@ -217,7 +217,7 @@ type
     chTalkerID: TNMEA_TalkerID;
     chCorrectedTalkerID: TNMEA_TalkerID; // for GNSS - defined by actual sat_id or index of record if no sat_id (first for GPS, second for GLONASS)
     // 1) Selection mode // #0 no data
-    sel_mode: Char; // M - Manual – Forced to operate in 2D or 3D mode, A - 2D Automatic – Allowed to automatically switch 2D/3D
+    sel_mode: AnsiChar; // M - Manual – Forced to operate in 2D or 3D mode, A - 2D Automatic – Allowed to automatically switch 2D/3D
     // 2) Mode // <0 no data
     fix_mode: SInt8; // 1 - Fix not available, 2 - 2D (<4 SVs used), 3 - 3D (>3 SVs used)
     // 3) ID of 1st satellite used for fix
@@ -267,7 +267,7 @@ type
     // 1) Time (UTC)
     time: TNMEA_Time;
     // 2) Status, V = Navigation receiver warning
-    status: Char; // A or V
+    status: AnsiChar; // A or V
     // 3) Latitude
     // 4) N or S
     lat: TNMEA_Coord;
@@ -283,9 +283,9 @@ type
     // 10) Magnetic Variation, degrees
     magvar_deg: Float32;
     // 11) E or W
-    magvar_sym: Char;
+    magvar_sym: AnsiChar;
     // 12) Mode - see above - NMEA version 2.3 (and later)
-    nmea23_mode: Char;
+    nmea23_mode: AnsiChar;
   end;
   PNMEA_RMC = ^TNMEA_RMC;
 
@@ -296,21 +296,21 @@ type
     // 1) Track Degrees
     trk_deg: Float32;
     // 2) T = True
-    trk_sym: Char;
+    trk_sym: AnsiChar;
     // 3) Track Degrees
     mag_deg: Float32;
     // 4) M = Magnetic
-    mag_sym: Char;
+    mag_sym: AnsiChar;
     // 5) Speed Knots
     knots_speed: Float32;
     // 6) N = Knots
-    knots_sym: Char;
+    knots_sym: AnsiChar;
     // 7) Speed Kilometers Per Hour
     kmph_speed: Float32;
     // 8) K = Kilometres Per Hour
-    kmph_sym: Char;
+    kmph_sym: AnsiChar;
     // 9) Mode - see above - NMEA version 2.3 (and later)
-    nmea23_mode: Char;    
+    nmea23_mode: AnsiChar;    
   end;
   PNMEA_VTG = ^TNMEA_VTG;
 {$ifend}
@@ -318,7 +318,7 @@ type
   // list of null-terminated strings
   TVSAGPS_PCHAR_LIST = record
     dwCount: DWORD; // number of items
-    szItems: array [0..0] of PChar; // never free this pointers!!!
+    szItems: array [0..0] of PAnsiChar; // never free this pointers!!!
   end;
   PVSAGPS_PCHAR_LIST = ^TVSAGPS_PCHAR_LIST;
 

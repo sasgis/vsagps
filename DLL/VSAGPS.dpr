@@ -67,14 +67,14 @@ end;
 
 function VSAGPS_Connect(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                         const AGPSDevType: DWORD;
-                        const AGPSDevName: PChar;
+                        const AGPSDevName: PAnsiChar;
                         const AFileSource: PWideChar;
                         const AALLDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
                         const ANewDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
                         const AUNIT_INFO_Changed: TVSAGPS_UNIT_INFO_DLL_Proc;
                         const AUnitIndexOut: PByte;
                         const AReserved: PDWORD): LongBool; stdcall;
-var sDevName: String;
+var sDevName: AnsiString;
 begin
   Result:=FALSE;
   try
@@ -144,7 +144,7 @@ end;
 function VSAGPS_SerializePacket(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                                 const AUnitIndex: Byte;
                                 const APacket: Pointer;
-                                const AReserved: PDWORD): PChar; stdcall;
+                                const AReserved: PDWORD): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
@@ -166,7 +166,7 @@ type
     procedure SelfOnThreadPending(Sender: TObject; AThread: TObject);
     procedure SelfOnThreadFinished(Sender: TObject; AThread: TObject);
     procedure SelfOnCOMReadBuffer(Sender: TObject;
-                                  const ABuffer: PChar;
+                                  const ABuffer: PAnsiChar;
                                   const ALength: DWORD;
                                   pBufferOK: PLongBool);
   end;
@@ -174,7 +174,7 @@ type
 { TCOMCheckerObjectStub }
 
 procedure TCOMCheckerObjectStub.SelfOnCOMReadBuffer(Sender: TObject;
-                                                    const ABuffer: PChar;
+                                                    const ABuffer: PAnsiChar;
                                                     const ALength: DWORD;
                                                     pBufferOK: PLongBool);
 begin
@@ -232,7 +232,7 @@ end;
 
 function VSAGPS_GetSupportedProtocols(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                                       const AUnitIndex: Byte;
-                                      const AReserved: PDWORD): PChar; stdcall;
+                                      const AReserved: PDWORD): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
@@ -245,7 +245,7 @@ end;
 
 function VSAGPS_GetDeviceInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                               const AUnitIndex: Byte;
-                              const AReserved: PDWORD): PChar; stdcall;
+                              const AReserved: PDWORD): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
@@ -258,7 +258,7 @@ end;
 
 function VSAGPS_GetUnitInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                             const AUnitIndex: Byte;
-                            const AReserved: PDWORD): PChar; stdcall;
+                            const AReserved: PDWORD): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
@@ -405,7 +405,7 @@ begin
 end;
 
 function VSAGPS_AddLoggerPacket(const AVSAGPS_LOGGER: TVSAGPS_HANDLE;
-                                const ABuffer: PChar;
+                                const ABuffer: PAnsiChar;
                                 const ABufferLen: DWORD;
                                 const pReserved: PDWORD): LongBool; stdcall;
 begin

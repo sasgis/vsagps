@@ -163,7 +163,7 @@ function VSAGPS_Load_DOMDocument_FromStream(const ADOMDocument: IDOMDocument; co
 var
   VDOMPersist: IDOMPersist;
   VParseError: IDOMParseError;
-  VMsg: String;
+  VMsg: String; // String ok
 begin
   Result:=FALSE;
   VDOMPersist:=nil;

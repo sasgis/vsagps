@@ -56,7 +56,7 @@ const
 
 // return number of added/inserted lines
 function parse_nullstrings_to_strings(AData_Size: DWORD;
-                                      ABuffer: PChar;
+                                      ABuffer: PAnsiChar;
                                       AStrings: TStrings;
                                       const ATrim: Boolean;
                                       const ASourceIsWide: Boolean): Byte;
@@ -71,7 +71,7 @@ uses
   vsagps_memory;
 
 function parse_nullstrings_to_strings(AData_Size: DWORD;
-                                      ABuffer: PChar;
+                                      ABuffer: PAnsiChar;
                                       AStrings: TStrings;
                                       const ATrim: Boolean;
                                       const ASourceIsWide: Boolean): Byte;
@@ -79,7 +79,7 @@ function parse_nullstrings_to_strings(AData_Size: DWORD;
 var
   sym_size: Byte;
 
-  procedure _Add_to_Obj(var s: String; var res: Byte);
+  procedure _Add_to_Obj(var s: AnsiString; var res: Byte);
   begin
     if ATrim and (Length(s)>0) then begin
       //
@@ -97,8 +97,8 @@ var
   end;
 
 var
-  s: String;
-  c: Char;
+  s: AnsiString;
+  c: AnsiChar;
   wc: WideChar;
   bz: Boolean;
 begin
@@ -128,7 +128,7 @@ begin
     end;
 
     // next
-    ABuffer:=PChar(Pointer(DWORD(Pointer(ABuffer))+sym_size));
+    ABuffer:=PAnsiChar(Pointer(DWORD(Pointer(ABuffer))+sym_size));
     AData_Size:=AData_Size-sym_size;
   end;
 
@@ -145,8 +145,8 @@ var
 {$ifend}
   i: Integer;
   iSize: DWORD;
-  pLines: PChar; // pointer to text of first item
-  s: String;
+  pLines: PAnsiChar; // pointer to text of first item
+  s: AnsiString;
 begin
   Result:=nil;
   if (nil<>sl) then
@@ -157,15 +157,15 @@ begin
 {$if defined(USE_SIMPLE_CLASSES)}
     EnumPtr:=nil;
     while sl.EnumItems(EnumPtr, PayloadPtr) do begin
-      iSize:=sizeof(PChar)+
-             sizeof(Char)+
-             StrLen(PChar(PayloadPtr))+
+      iSize:=sizeof(PAnsiChar)+
+             sizeof(AnsiChar)+
+             StrLen(PAnsiChar(PayloadPtr))+
              iSize;
     end;
 {$else}
     for i := 0 to sl.Count-1 do
-      iSize:=sizeof(PChar)+ // pointer to array
-             sizeof(Char)+ // null-terminated char
+      iSize:=sizeof(PAnsiChar)+ // pointer to array
+             sizeof(AnsiChar)+ // null-terminated ansichar
              DWORD(Length(sl[i]))+ // real string length
              iSize;
 {$ifend}
@@ -174,26 +174,26 @@ begin
     Result:=VSAGPS_GetMem(iSize);
     if (nil<>Result) then
     try
-      // count of strings
+      // count of lines
       Result^.dwCount:=sl.Count;
       // starting position
-      pLines:=PChar(Pointer(@(Result.szItems[Result.dwCount])));
+      pLines:=PAnsiChar(Pointer(@(Result.szItems[Result.dwCount])));
       // add lines
 {$if defined(USE_SIMPLE_CLASSES)}
       EnumPtr:=nil;
       i:=0;
       while sl.EnumItems(EnumPtr, PayloadPtr) do begin
-        CopyMemory(pLines, PChar(PayloadPtr), StrLen(PayloadPtr)+1);
+        CopyMemory(pLines, PAnsiChar(PayloadPtr), StrLen(PAnsiChar(PayloadPtr))+1);
         Result^.szItems[i]:=pLines;
-        pLines:=PChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
+        pLines:=PAnsiChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
       end;
 {$else}
       for i := 0 to sl.Count-1 do begin
         s:=sl[i];
-        CopyMemory(pLines, PChar(s), Length(s));
+        CopyMemory(pLines, PAnsiChar(s), Length(s));
         pLines[Length(s)]:=#0;
         Result^.szItems[i]:=pLines;
-        pLines:=PChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
+        pLines:=PAnsiChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
       end;
 {$ifend}
     except

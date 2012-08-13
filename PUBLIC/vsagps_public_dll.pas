@@ -33,7 +33,7 @@ procedure VSAGPS_Destroy(AVSAGPS_HANDLE: TVSAGPS_HANDLE); stdcall; external vsag
 
 function VSAGPS_Connect(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                         const AGPSDevType: DWORD;
-                        const AGPSDevName: PChar;
+                        const AGPSDevName: PAnsiChar;
                         const AFileSource: PWideChar;
                         const AALLDevParams: PVSAGPS_ALL_DEVICE_PARAMS;
                         const ANewDevParams: PVSAGPS_SINGLE_DEVICE_PARAMS;
@@ -59,7 +59,7 @@ function VSAGPS_GPSState(const AVSAGPS_HANDLE: TVSAGPS_HANDLE): Tvsagps_GPSState
 function VSAGPS_SerializePacket(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                                 const AUnitIndex: Byte;
                                 const APacket: Pointer;
-                                const AReserved: PDWORD): PChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
+                                const AReserved: PDWORD): PAnsiChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
 
 function VSAGPS_AutodetectCOM(const ADevFlags: DWORD;
                               const AUserPointer: Pointer;
@@ -71,15 +71,15 @@ function VSAGPS_AutodetectCOM(const ADevFlags: DWORD;
 
 function VSAGPS_GetSupportedProtocols(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                                       const AUnitIndex: Byte;
-                                      const AReserved: PDWORD): PChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
+                                      const AReserved: PDWORD): PAnsiChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
 
 function VSAGPS_GetDeviceInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                               const AUnitIndex: Byte;
-                              const AReserved: PDWORD): PChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
+                              const AReserved: PDWORD): PAnsiChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
 
 function VSAGPS_GetUnitInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
                             const AUnitIndex: Byte;
-                            const AReserved: PDWORD): PChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
+                            const AReserved: PDWORD): PAnsiChar; stdcall; external vsagps_dll; // result must be deallocated using VSAGPS_FreeMem
 
 function VSAGPS_Check_Version(const p: PVSAGPS_VERSION): LongBool; stdcall; external vsagps_dll;
 
@@ -119,7 +119,7 @@ function VSAGPS_AddLoggerWayPoint(const AVSAGPS_LOGGER: TVSAGPS_HANDLE;
                                   const pATP: Pvsagps_AddTrackPoint): LongBool; stdcall; external vsagps_dll;
 
 function VSAGPS_AddLoggerPacket(const AVSAGPS_LOGGER: TVSAGPS_HANDLE;
-                                const ABuffer: PChar;
+                                const ABuffer: PAnsiChar;
                                 const ABufferLen: DWORD;
                                 const pReserved: PDWORD): LongBool; stdcall; external vsagps_dll;
 
@@ -135,13 +135,13 @@ function VSAGPS_RestartLogger(const AVSAGPS_LOGGER: TVSAGPS_HANDLE): LongBool; s
 
 // not imported
 
-function VSAGPS_AllocPCharByString(const s: String; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PChar);
+procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
 
 implementation
 
-function VSAGPS_AllocPCharByString(const s: String; const aNILforEmpty: Boolean): PChar;
+function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar;
 var d: Integer;
 begin
   Result:=nil;
@@ -152,11 +152,11 @@ begin
 
   Result:=VSAGPS_GetMem(d+1);
   if (0<d) then
-    CopyMemory(Result, PChar(s), d);
+    CopyMemory(Result, PAnsiChar(s), d);
   Result[d]:=#0;
 end;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PChar);
+procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
 begin
   if (nil<>p) then begin
     VSAGPS_FreeMem(p);

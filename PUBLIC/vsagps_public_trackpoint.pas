@@ -23,18 +23,18 @@ uses
 type
   Tvsagps_TrackPointStrings = packed record
     // kml and gpx
-    sz_name: PChar;
-    sz_desc: PChar;
+    sz_name: PAnsiChar;
+    sz_desc: PAnsiChar;
     // gpx only
-    sz_cmt: PChar;
-    sz_src: PChar;
-    sz_link: PChar;
-    sz_sym: PChar;
-    sz_type: PChar;
-    sz_extensions: PChar;
+    sz_cmt: PAnsiChar;
+    sz_src: PAnsiChar;
+    sz_link: PAnsiChar;
+    sz_sym: PAnsiChar;
+    sz_type: PAnsiChar;
+    sz_extensions: PAnsiChar;
     // kml only
-    sz_Style: PChar;
-    sz_styleUrl: PChar;
+    sz_Style: PAnsiChar;
+    sz_styleUrl: PAnsiChar;
   end;
   Pvsagps_TrackPointStrings = ^Tvsagps_TrackPointStrings;
   
@@ -42,7 +42,7 @@ type
     // fill by caller
     pPos: PSingleGPSData;        // mandatory
     pSatFixAll: PVSAGPS_FIX_ALL; // allow NIL
-    szSatsInfo: PChar; // satellites info
+    szSatsInfo: PAnsiChar; // satellites info
     ptReserved: Pointer; // reserved - must be NIL
     dwReserved: DWORD; // reserved - must be 0
     btUnitIndex: Byte;

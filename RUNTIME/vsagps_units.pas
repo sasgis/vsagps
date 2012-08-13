@@ -124,9 +124,9 @@ type
                                          const ACommand: LongInt;
                                          const APointer: Pointer);
 
-    function AllocDeviceInfo(const AUnitIndex: Byte): PChar;
-    function AllocSupportedProtocols(const AUnitIndex: Byte): PChar;
-    function AllocUnitInfo(const AUnitIndex: Byte): PChar;
+    function AllocDeviceInfo(const AUnitIndex: Byte): PAnsiChar;
+    function AllocSupportedProtocols(const AUnitIndex: Byte): PAnsiChar;
+    function AllocUnitInfo(const AUnitIndex: Byte): PAnsiChar;
 
     property ALLDeviceUserPointer: Pointer read FALLDeviceUserPointer write FALLDeviceUserPointer;
 
@@ -148,7 +148,7 @@ uses
 
 { TVSAGPS_UNITS }
 
-function TVSAGPS_UNITS.AllocDeviceInfo(const AUnitIndex: Byte): PChar;
+function TVSAGPS_UNITS.AllocDeviceInfo(const AUnitIndex: Byte): PAnsiChar;
 begin
   Result:=nil;
   if (AUnitIndex<=cUnitIndex_Max) then
@@ -168,7 +168,7 @@ begin
   end;
 end;
 
-function TVSAGPS_UNITS.AllocSupportedProtocols(const AUnitIndex: Byte): PChar;
+function TVSAGPS_UNITS.AllocSupportedProtocols(const AUnitIndex: Byte): PAnsiChar;
 begin
   Result:=nil;
   if (AUnitIndex<=cUnitIndex_Max) then
@@ -188,7 +188,7 @@ begin
   end;
 end;
 
-function TVSAGPS_UNITS.AllocUnitInfo(const AUnitIndex: Byte): PChar;
+function TVSAGPS_UNITS.AllocUnitInfo(const AUnitIndex: Byte): PAnsiChar;
 begin
   Result:=nil;
   if (AUnitIndex<=cUnitIndex_Max) then

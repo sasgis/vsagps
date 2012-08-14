@@ -98,6 +98,7 @@ type
     procedure Internal_Before_Close_Device; virtual;
     function Internal_Do_Open_Device: Boolean;
     function InternalGetUserPointer: Pointer;
+
     procedure InternalLockCloseHandle;
     procedure InternalUnlockCloseHandle;
   protected

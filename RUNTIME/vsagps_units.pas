@@ -115,6 +115,9 @@ type
     procedure Lock_CS_State;
     procedure Unlock_CS_State;
 
+    procedure Lock_CS_CloseHandle;
+    procedure Unlock_CS_CloseHandle;
+
     procedure WaitForALLState(const AStates: Tvsagps_GPSStates; const pbAbort: pBoolean);
 
     procedure Execute_GPSCommand_OnUnit(const AUnitIndex: Byte;
@@ -144,6 +147,7 @@ implementation
 
 uses
   vsagps_memory,
+  vsagps_public_debugstring,
   vsagps_tools;
 
 { TVSAGPS_UNITS }
@@ -210,6 +214,10 @@ end;
 
 constructor TVSAGPS_UNITS.Create;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Create: begin');
+{$ifend}
+
   InitializeCriticalSection(FCS_CloseHandle);
   FNewUniqueIndex:=0;
   FDeviceThread:=nil;
@@ -220,23 +228,54 @@ begin
   InitializeCriticalSection(FCS_State);
   FOnGPSStateChanged:=nil;
   FOnGPSTimeout:=nil;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Create: end');
+{$ifend}
 end;
 
 destructor TVSAGPS_UNITS.Destroy;
 var i: Byte;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: begin');
+{$ifend}
+
   FreeAndNil(FDeviceThread);
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: cleanup');
+{$ifend}
+
   // cleanup all items
   for i := 0 to cUnitIndex_Max do
   try
-    if Assigned(FItems[i].objDevice) then
-      FItems[i].objDevice.Free;
+    if Assigned(FItems[i].objDevice) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: kill object');
+{$ifend}
+      FreeAndNil(FItems[i].objDevice);
+    end;
   except
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: delete sections');
+{$ifend}
+
   // kill
   DeleteCriticalSection(FCS_State);
   DeleteCriticalSection(FCS_CloseHandle);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: inherited');
+{$ifend}
+
   inherited;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.DoInternalGPSStateChanged(const AUnitIndex: Byte;
@@ -317,12 +356,20 @@ end;
 
 function TVSAGPS_UNITS.GPSDisconnect: Boolean;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.GPSDisconnect: begin');
+{$ifend}
+
   Lock_CS_State;
   try
     Result:=InternalGPSDisconnect(FALSE, FALSE);
   finally
     Unlock_CS_State;
   end;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.GPSDisconnect: end');
+{$ifend}
 end;
 
 function TVSAGPS_UNITS.InternalCalcCurrentState: Tvsagps_GPSState;
@@ -394,8 +441,16 @@ end;
 
 procedure TVSAGPS_UNITS.InternalCheckOnLastDisconnected;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalCheckOnLastDisconnected: begin');
+{$ifend}
+
   if (gs_DoneDisconnected=InternalCalcCurrentState) then
     InternalGPSDisconnect(TRUE, FALSE);
+    
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalCheckOnLastDisconnected: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalCleanupItem(const AUnitIndex: Byte);
@@ -533,48 +588,98 @@ end;
 function TVSAGPS_UNITS.InternalGPSDisconnect(const AInThread, AWaitFor: Boolean): Boolean;
 var VOldState: Tvsagps_GPSState;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: begin');
+{$ifend}
+
   Result:=FALSE;
 
   // current state
   VOldState:=FALLState; // cs_state already locked
 
   // if common call to disconnect and still disconnecting - ignore this (disconnecting in process)
-  if (not AWaitFor) and (not AInThread) and (VOldState in [gs_PendingDisconnecting,gs_ProcessDisconnecting]) then
+  if (not AWaitFor) and (not AInThread) and (VOldState in [gs_PendingDisconnecting,gs_ProcessDisconnecting]) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: pending');
+{$ifend}
     Exit;
+  end;
 
   if (gs_DoneDisconnected <> VOldState) then begin
     // dont send from destructor
-    if (not AWaitFor) then
+    if (not AWaitFor) then begin
       InternalChangeALLGPSState(gs_ProcessDisconnecting, FALSE);
+    end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: terminate');
+{$ifend}
 
     // terminate threads
     InternalTerminateRuntimeObjects;
 
     if AWaitFor then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: waiting');
+{$ifend}
+
       // if any thread is waiting on cs - unlock to finish
       Unlock_CS_State;
       try
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: wait for runtime');
+{$ifend}
+
         InternalWaitRuntimeObjects;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: ok for runtime');
+{$ifend}
       finally
         Lock_CS_State;
       end;
 
       Sleep(0);
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: wait for all');
+{$ifend}
+
       // wait for all devices
       InternalDisconnectALLItems(AWaitFor);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: ok for all');
+{$ifend}
     end;
 
     // ok
     Result:=TRUE;
   end;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalGPSDisconnect: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalOnDeviceThreadTerminate(Sender: TObject);
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalOnDeviceThreadTerminate: begin');
+{$ifend}
+
   // ALL Device CLOSED
   FDeviceThread:=nil;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalOnDeviceThreadTerminate: disconnect');
+{$ifend}
+
   InternalChangeALLGPSState(gs_DoneDisconnected, TRUE);
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalOnDeviceThreadTerminate: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalPrepareItem(const AUnitIndex: Byte);
@@ -648,17 +753,39 @@ begin
         Result:=TRUE;
       end else if (GetTickCount > dwStartPendingTicks + InternalGetConnectionTimeoutMSec(AUnitIndex)) then begin
         // too long to disconnect - kill
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessRequestForUnit: kill');
+{$ifend}
+
         try
           objDevice.KillNow;
         except
         end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessRequestForUnit: killed');
+{$ifend}
+
         Sleep(0);
+
         DoInternalGPSStateChanged(AUnitIndex, objDevice.GPSDeviceType, gs_DoneDisconnected);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessRequestForUnit: free');
+{$ifend}
+
         try
           FreeAndNil(objDevice);
         except
         end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessRequestForUnit: destroyed');
+{$ifend}
+
         InternalCleanupItem(AUnitIndex);
+
         // global disconnect on last disconnected unit
         InternalCheckOnLastDisconnected;
         Result:=TRUE;
@@ -679,6 +806,10 @@ var
   end;
 
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessUnitsRequests: begin');
+{$ifend}
+
   if (nil<>FALLDeviceParams) then
     b_UnSyncDisconnected := ((FALLDeviceParams^.dwDeviceFlagsIn and dpdfi_UnSyncDisconnected) = dpdfi_UnSyncDisconnected)
   else
@@ -727,6 +858,10 @@ begin
   end
   until FALSE;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessUnitsRequests: kill');
+{$ifend}
+
   // kill thread
   if (nil<>AThread) then
   try
@@ -737,54 +872,148 @@ begin
       AThread.DoTerminateUnSync;
   except
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalProcessUnitsRequests: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalTerminateRuntimeObjects;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalTerminateRuntimeObjects: begin');
+{$ifend}
+
   if (nil<>FDeviceThread) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalTerminateRuntimeObjects: terminate');
+{$ifend}
     FDeviceThread.Terminate;
   end;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalTerminateRuntimeObjects: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalWaitRuntimeObjects;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeObjects: begin');
+{$ifend}
+
   InternalWaitRuntimeThread(@FDeviceThread);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeObjects: end');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.InternalWaitRuntimeThread(const APtrThread: Pvsagps_Thread);
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeThread: begin');
+{$ifend}
+
   try
     repeat
       Sleep(0);
       // if destroyed - go
-      if (nil=APtrThread^) then
+      if (nil=APtrThread^) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeThread: destroyed');
+{$ifend}
         Exit;
+      end;
+        
       Sleep(0);
+
       // terminate if not
-      if (nil<>APtrThread^) and (not APtrThread^.Terminated) then
+      if (nil<>APtrThread^) and (not APtrThread^.Terminated) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeThread: terminate');
+{$ifend}
         APtrThread^.Terminate;
+      end;
+
       Sleep(0);
+
       // if finished
-      if (nil<>APtrThread^) and (not APtrThread^.GPSRunning) then
+      if (nil<>APtrThread^) and (not APtrThread^.GPSRunning) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeThread: finished');
+{$ifend}
         Exit;
+      end;
+
       Sleep(cWorkingThread_Default_Delay_Msec);
     until FALSE;
   except
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalWaitRuntimeThread: end');
+{$ifend}
+end;
+
+procedure TVSAGPS_UNITS.Lock_CS_CloseHandle;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_CloseHandle: in');
+{$ifend}
+
+  EnterCriticalSection(FCS_CloseHandle);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_CloseHandle: ok');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.Lock_CS_State;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_State: in');
+{$ifend}
+
   EnterCriticalSection(FCS_State);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_State: ok');
+{$ifend}
+end;
+
+procedure TVSAGPS_UNITS.Unlock_CS_CloseHandle;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_CloseHandle: in');
+{$ifend}
+
+  LeaveCriticalSection(FCS_CloseHandle);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_CloseHandle: ok');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.Unlock_CS_State;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_State: in');
+{$ifend}
+
   LeaveCriticalSection(FCS_State);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_State: ok');
+{$ifend}
 end;
 
 procedure TVSAGPS_UNITS.WaitForALLState(const AStates: Tvsagps_GPSStates; const pbAbort: pBoolean);
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.WaitForALLState: begin');
+{$ifend}
+
   repeat
     Sleep(0);
     if (FALLState in AStates) or ((nil<>pbAbort) and (pbAbort^)) then begin
@@ -792,26 +1021,61 @@ begin
     end;
     Sleep(cWorkingThread_Devices_Delay_MSec);
   until FALSE;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.WaitForALLState: end');
+{$ifend}
 end;
 
 { Tvsagps_Thread }
 
 procedure Tvsagps_Thread.DoTerminateUnSync;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.DoTerminateUnSync: begin');
+{$ifend}
+
   if Assigned(OnTerminate) then begin
     OnTerminate(Self);
     OnTerminate:=nil;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.DoTerminateUnSync: end');
+{$ifend}
 end;
 
 procedure Tvsagps_Thread.KillNow;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: begin');
+{$ifend}
+
   if (0<>Handle) then begin
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: terminate');
+{$ifend}
+
     TerminateThread(Handle,0);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: close');
+{$ifend}
+
     CloseHandle(Handle);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: cleanup');
+{$ifend}
+
     PHandle(@(Handle))^:=0;
     PDWORD(@(ThreadID))^:=0;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: end');
+{$ifend}
 end;
 
 { Tvsagps_Device_Thread }

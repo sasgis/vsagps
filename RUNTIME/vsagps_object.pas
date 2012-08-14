@@ -98,6 +98,10 @@ end;
 
 destructor Tvsagps_object.Destroy;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: begin');
+{$ifend}
+
   // disconnect with wait
   Lock_CS_State;
   try
@@ -105,26 +109,66 @@ begin
   finally
     Unlock_CS_State;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: disconnected');
+{$ifend}
+
   // kill object
-  EnterCriticalSection(FCS_CloseHandle);
+  Lock_CS_CloseHandle;
   try
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: packet');
+{$ifend}
     FreeAndNil(FPacketThread);
   finally
-    LeaveCriticalSection(FCS_CloseHandle);
+    Unlock_CS_CloseHandle;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: queue');
+{$ifend}
+
   FreeAndNil(FPacketQueue);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: inherited');
+{$ifend}
+
   inherited Destroy;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: end');
+{$ifend}
 end;
 
 procedure Tvsagps_object.InternalTerminateRuntimeObjects;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalTerminateRuntimeObjects: begin');
+{$ifend}
+
   inherited;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalTerminateRuntimeObjects: packet');
+{$ifend}
+
   if (nil<>FPacketThread) then begin
     FPacketThread.Terminate;
   end;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalTerminateRuntimeObjects: queue');
+{$ifend}
+
   if (nil<>FPacketQueue) then begin
     FPacketQueue.FreeAllPackets;
   end;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalTerminateRuntimeObjects: end');
+{$ifend}
 end;
 
 procedure Tvsagps_object.InternalThreadRoutine_for_Packets(const AThread: Tvsagps_Packet_Thread);
@@ -150,6 +194,10 @@ var
   end;
 
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: begin');
+{$ifend}
+
   dwDelay := GetDeviceWorkerThreadTimeoutMSec(FALLDeviceParams, nil);
 
   repeat
@@ -283,23 +331,50 @@ begin
     end;
   except
   end;
+
   Sleep(dwDelay);
+  
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: sleeping');
 {$ifend}
   until FALSE;
 
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: kill');
+{$ifend}
+
   // kill thread
   if (nil<>AThread) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: stop');
+{$ifend}
+
     AThread.GPSRunning:=FALSE;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: terminate');
+{$ifend}
+
     AThread.Terminate;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: end');
+{$ifend}
 end;
 
 procedure Tvsagps_object.InternalWaitRuntimeObjects;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalWaitRuntimeObjects: begin');
+{$ifend}
+
   inherited;
   InternalWaitRuntimeThread(@FPacketThread);
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalWaitRuntimeObjects: end');
+{$ifend}
 end;
 
 function Tvsagps_object.SendPacket_ToUnit(const AUnitIndex: Byte;
@@ -502,12 +577,20 @@ end;
 
 procedure Tvsagps_object.InternalOnPacketThreadTerminate(Sender: TObject);
 begin
-  EnterCriticalSection(FCS_CloseHandle);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalOnPacketThreadTerminate: begin');
+{$ifend}
+
+  Lock_CS_CloseHandle;
   try
     FPacketThread:=nil;
   finally
-    LeaveCriticalSection(FCS_CloseHandle);
+    Unlock_CS_CloseHandle;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_object.InternalOnPacketThreadTerminate: end');
+{$ifend}
 end;
 
 { Tvsagps_Packet_Thread }

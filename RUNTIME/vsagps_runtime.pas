@@ -586,7 +586,7 @@ begin
             bDiResult:=TSetupDiGetDeviceInterfaceDetailA(pFunc)(theDevInfo, @theInterfaceData, theDevDetailData, theBytesReturned, nil, @theDevInfoData);
             if bDiResult then begin
               // save info to list
-              dwErr:=StrLen(@(theDevDetailData^.DevicePath));
+              dwErr:=StrLen(PAnsiChar(@(theDevDetailData^.DevicePath)));
               SetString(str_dev_name, PAnsiChar(@(theDevDetailData^.DevicePath)), dwErr);
               //if sl_names.IndexOf(str_dev_name)>=0 then
                 //break;

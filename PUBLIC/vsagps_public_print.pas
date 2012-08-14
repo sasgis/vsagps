@@ -50,7 +50,7 @@ implementation
 procedure do_after_to_str(var str_res: AnsiString; const fs: TFormatSettings);
   function _DS(const aChr: AnsiChar): Boolean;
   begin
-    Result:=((aChr=DecimalSeparator) or (aChr=fs.DecimalSeparator));
+    Result:=((DecimalSeparator=aChr) or (fs.DecimalSeparator=aChr));
   end;
 begin
   // del leading 0

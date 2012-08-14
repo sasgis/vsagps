@@ -87,6 +87,9 @@ type
     procedure InternalKillUnitInfoCS;
     procedure InternalWipeUnitInfoCS;
     procedure InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: AnsiString);
+    procedure InternalLockUnitInfoCS;
+    procedure InternalUnlockUnitInfoCS;
+
     procedure InternalResetRequestGPSCommand;
     procedure InternalResetDeviceConnectionParams; virtual;
     procedure InternalKillAutodetectObject;
@@ -95,6 +98,8 @@ type
     procedure Internal_Before_Close_Device; virtual;
     function Internal_Do_Open_Device: Boolean;
     function InternalGetUserPointer: Pointer;
+    procedure InternalLockCloseHandle;
+    procedure InternalUnlockCloseHandle;
   protected
     // start session - operations to establish connection
     function WorkingThread_StartSession: Boolean; virtual;
@@ -268,11 +273,25 @@ end;
 
 destructor Tvsagps_device_base.Destroy;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: begin');
+{$ifend}
+
   WorkingThread_Internal_Close(TRUE);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: closed');
+{$ifend}
+
   VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
 {$if defined(VSAGPS_USE_UNICODE)}
   VSAGPS_FreeAndNil_PWideChar(FGPSDeviceInfo_NameToConnectInternalW);
 {$ifend}
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: cleanup');
+{$ifend}
+
   FExternal_Queue:=nil;
   InternalCloseDevice;
   InternalKillAutodetectObject;
@@ -280,13 +299,30 @@ begin
   FreeAndNil(FSupportedProtocols);
   InternalWipeUnitInfoCS;
   InternalKillUnitInfoCS;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: done');
+{$ifend}
+
   inherited;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.Disconnect;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Disconnect: begin');
+{$ifend}
+
   WorkingThread_Internal_Close(FALSE);
   //InternalCloseDevice; // async disconnect - allow pending
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Disconnect: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.ExecuteGPSCommand(const ACommand: LongInt;
@@ -333,13 +369,21 @@ end;
 
 procedure Tvsagps_device_base.WorkingThread_Internal_Close(const AWaitFor: Boolean);
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Close: begin');
+{$ifend}
+
   VSAGPS_WorkingThread_Kill(@FWT_Handle, @FWT_Params, AWaitFor);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Close: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.WorkingThread_Internal_Routine;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 1');
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: begin');
 {$ifend}
   try
     //inherited;
@@ -348,7 +392,7 @@ begin
       Exit;
       
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 2');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: connected');
 {$ifend}
 
     // start session (wait for communication established)
@@ -356,7 +400,7 @@ begin
       Exit;
       
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 3');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: started');
 {$ifend}
 
     // send first qwery packet (start data comunicating)
@@ -364,7 +408,7 @@ begin
       Exit;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 4');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: established');
 {$ifend}
 
     // user callback
@@ -375,43 +419,57 @@ begin
     end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 5');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: run');
 {$ifend}
 
     // loop reading received packets
     WorkingThread_Process_Packets(0);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.WorkingThread_Internal_Routine 6');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: finish');
 {$ifend}
   finally
     InternalCloseDevice;
   end;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_Internal_Routine: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.InternalCloseDevice;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString(ClassName+'.InternalCloseDevice: begin');
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalCloseDevice: begin');
 {$ifend}
-  if FPtrCS_CloseHandle<>nil then
-    EnterCriticalSection(FPtrCS_CloseHandle^);
+
+  InternalLockCloseHandle;
   try
     if (0<>FGPSDeviceHandle) then begin
       Internal_Before_Close_Device;
+
       if (FakeFileHandle<>FGPSDeviceHandle) then begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-        VSAGPS_DebugAnsiString(ClassName+'.InternalCloseDevice: CloseHandle');
+        VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalCloseDevice: CloseHandle');
 {$ifend}
+
         CloseHandle(FGPSDeviceHandle);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalCloseDevice: closed');
+{$ifend}
       end;
+
       FGPSDeviceHandle:=0;
       InternalResetDeviceConnectionParams;
     end;
+
   finally
-    if FPtrCS_CloseHandle<>nil then
-      LeaveCriticalSection(FPtrCS_CloseHandle^);
+    InternalUnlockCloseHandle;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalCloseDevice: end');
+{$ifend}
 end;
 
 function Tvsagps_device_base.InternalGetUserPointer: Pointer;
@@ -424,31 +482,103 @@ end;
 
 procedure Tvsagps_device_base.InternalKillAutodetectObject;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillAutodetectObject: begin');
+{$ifend}
+
   if (nil<>FAutodetectObject) then
     FreeAndNil(FAutodetectObject);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillAutodetectObject: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.InternalKillUnitInfoCS;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillUnitInfoCS: begin');
+{$ifend}
+
   if (nil<>FUNIT_INFO_CS) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillUnitInfoCS: delete');
+{$ifend}
     DeleteCriticalSection(FUNIT_INFO_CS^);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillUnitInfoCS: dispose');
+{$ifend}
+
     Dispose(FUNIT_INFO_CS);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillUnitInfoCS: cleanup');
+{$ifend}
+
     FUNIT_INFO_CS:=nil;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalKillUnitInfoCS: end');
+{$ifend}
+end;
+
+procedure Tvsagps_device_base.InternalLockCloseHandle;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalLockCloseHandle: in');
+{$ifend}
+
+  if FPtrCS_CloseHandle<>nil then
+    EnterCriticalSection(FPtrCS_CloseHandle^);
+    
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalLockCloseHandle: ok');
+{$ifend}
+end;
+
+procedure Tvsagps_device_base.InternalLockUnitInfoCS;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalLockUnitInfoCS: in');
+{$ifend}
+
+  if (nil<>FUNIT_INFO_CS) then
+    EnterCriticalSection(FUNIT_INFO_CS^);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalLockUnitInfoCS: ok');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.InternalMakeUnitInfoCS;
 begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalMakeUnitInfoCS: begin');
+{$ifend}
+
   if (dpdfi_SyncUnitInfo = (FALLDeviceParams^.dwDeviceFlagsIn and dpdfi_SyncUnitInfo)) then begin
     // need sync
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalMakeUnitInfoCS: make');
+{$ifend}
     if (nil=FUNIT_INFO_CS) then begin
       New(FUNIT_INFO_CS);
+      //ZeroMemory();
       InitializeCriticalSection(FUNIT_INFO_CS^);
     end;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalMakeUnitInfoCS: done');
+{$ifend}
   end else begin
     // no sync
     InternalKillUnitInfoCS;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalMakeUnitInfoCS: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.InternalResetDeviceConnectionParams;
@@ -463,8 +593,11 @@ end;
 
 procedure Tvsagps_device_base.InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: AnsiString);
 begin
-  if (nil<>FUNIT_INFO_CS) then
-    EnterCriticalSection(FUNIT_INFO_CS^);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalSetUnitInfo: begin');
+{$ifend}
+
+  InternalLockUnitInfoCS;
   try
     if not SameText(FUNIT_INFO[AKind], ANewValue) then begin
       // change
@@ -474,21 +607,62 @@ begin
         FUNIT_INFO_Changed(InternalGetUserPointer, FUnitIndex, FGPSDeviceType, AKind, PAnsiChar(ANewValue));
     end;
   finally
-    if (nil<>FUNIT_INFO_CS) then
-      LeaveCriticalSection(FUNIT_INFO_CS^);
+    InternalUnlockUnitInfoCS;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalSetUnitInfo: end');
+{$ifend}
+end;
+
+procedure Tvsagps_device_base.InternalUnlockCloseHandle;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalUnlockCloseHandle: in');
+{$ifend}
+
+  if FPtrCS_CloseHandle<>nil then
+    LeaveCriticalSection(FPtrCS_CloseHandle^);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalUnlockCloseHandle: ok');
+{$ifend}
+end;
+
+procedure Tvsagps_device_base.InternalUnlockUnitInfoCS;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalUnlockUnitInfoCS: in');
+{$ifend}
+
+  if (nil<>FUNIT_INFO_CS) then
+    LeaveCriticalSection(FUNIT_INFO_CS^);
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalUnlockUnitInfoCS: ok');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.InternalWipeUnitInfoCS;
 begin
-  if (nil<>FUNIT_INFO_CS) then
-    EnterCriticalSection(FUNIT_INFO_CS^);
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalWipeUnitInfoCS: begin');
+{$ifend}
+
+  InternalLockUnitInfoCS;
   try
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalWipeUnitInfoCS: clear');
+{$ifend}
+
     Clear_TVSAGPS_UNIT_INFO(@FUNIT_INFO);
   finally
-    if (nil<>FUNIT_INFO_CS) then
-      LeaveCriticalSection(FUNIT_INFO_CS^);
+    InternalUnlockUnitInfoCS;
   end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalWipeUnitInfoCS: end');
+{$ifend}
 end;
 
 procedure Tvsagps_device_base.Internal_Before_Close_Device;
@@ -556,13 +730,13 @@ begin
   Result:=FALSE;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: begin');
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: begin');
 {$ifend}
 
   if (FakeFileHandle=FGPSDeviceHandle) then begin
     // open files internally (without handle)
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: fake');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: fake');
 {$ifend}
     Result:=TRUE;
     InternalSetNameAW;
@@ -573,7 +747,7 @@ begin
   if (nil<>FGPSDeviceInfo_NameToConnectInternalW) then begin
     // open file or device
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: CreateFileW');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: CreateFileW');
 {$ifend}
     hFile:=CreateFileW(FGPSDeviceInfo_NameToConnectInternalW,
                        GENERIC_READ,
@@ -594,7 +768,7 @@ begin
     if (0=dwDevNameLen) then begin
       // no device name
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-      VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: no device name');
+      VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: no device name');
 {$ifend}
       InternalSetEmpty;
       FWT_Params.dwFinishReason:=(FWT_Params.dwFinishReason or wtfr_No_Device_Name);
@@ -604,7 +778,7 @@ begin
     if (FALLDeviceParams^.btAutodetectOnConnect<>0) and (FGPSDeviceHandle<>0) then begin
       // already connected !!!
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-      VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: already connected');
+      VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: already connected');
 {$ifend}
       InternalSetNameA;
       Result:=TRUE;
@@ -612,7 +786,7 @@ begin
     end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: CreateFileA');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: CreateFileA');
 {$ifend}
 
     // com+usb
@@ -630,14 +804,14 @@ begin
     // failed
     FWT_Params.dwLastError:=GetLastError;
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: failed '+IntToStr(FWT_Params.dwLastError));
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: failed '+IntToStr(FWT_Params.dwLastError));
 {$ifend}
     FWT_Params.dwFinishReason:=(FWT_Params.dwFinishReason or wtfr_Abort_By_Device);
     InternalSetEmpty;
   end else begin
     // ok
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.Internal_Do_Open_Device: ok');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Do_Open_Device: ok');
 {$ifend}
     FGPSDeviceHandle:=hFile;
     Result:=TRUE;
@@ -648,7 +822,7 @@ end;
 procedure Tvsagps_device_base.KillNow;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString(ClassName+'.KillNow');
+    VSAGPS_DebugAnsiString('Tvsagps_device_base.KillNow: begin');
 {$ifend}
   if (0<>FWT_Handle) then begin
     TerminateThread(FWT_Handle,0);
@@ -657,6 +831,9 @@ begin
   end;
   FGPSDeviceSessionStarted:=0;
   InternalCloseDevice;
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_device_base.KillNow: end');
+{$ifend}
 end;
 
 function Tvsagps_device_base.Parse_GarminPVT_Packets(const pPacket: PGarminUSB_Custom_Packet; const BaseAuxPacketFlags: DWORD): DWORD;
@@ -716,11 +893,15 @@ begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_ConnectToDevice: begin');
 {$ifend}
+
   Internal_Before_Open_Device;
+  
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_ConnectToDevice: open');
 {$ifend}
+
   Result:=Internal_Do_Open_Device;
+  
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.WorkingThread_ConnectToDevice: end');
 {$ifend}

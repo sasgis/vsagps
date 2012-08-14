@@ -12,7 +12,8 @@ interface
 
 {$IFDEF MSWINDOWS}
 uses
-  Windows;
+  Windows,
+  SysUtils;
 {$ENDIF}
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
@@ -33,8 +34,10 @@ end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
 procedure VSAGPS_DebugAnsiString(const ADebugText: AnsiString);
+var VText: AnsiString;
 begin
-  OutputDebugStringA(PAnsiChar(ADebugText));
+  VText := '[THR='+IntToStr(GetCurrentThreadId)+']'+ADebugText;
+  OutputDebugStringA(PAnsiChar(VText));
 end;
 {$ifend}
 

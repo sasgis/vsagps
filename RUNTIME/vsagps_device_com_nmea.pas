@@ -435,7 +435,7 @@ var
 
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString(ClassName+'.Internal_Parse_NmeaComm_Packets:');
+  VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Parse_NmeaComm_Packets:');
   VSAGPS_DebugPAnsiChar(pPacket);
 {$ifend}
   Result:=0;

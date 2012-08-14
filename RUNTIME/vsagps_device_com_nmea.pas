@@ -981,7 +981,7 @@ begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
     VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Send_NmeaComm_Packet: read-only');
 {$ifend}
-    Result := FALSE;
+    Result := TRUE;
     Exit;
   end;
 
@@ -1067,10 +1067,10 @@ begin
 
   if FIniReadOnly then begin
     // read-only mode - do not send to device at all
-    Result := FALSE;
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
     VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.WorkingThread_SendPacket: read-only');
 {$ifend}
+    Result := TRUE;
     Exit;
   end;
 

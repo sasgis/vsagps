@@ -65,6 +65,7 @@ type
   TVSAGPS_UNITS = class(TObject)
   private
     FNewUniqueIndex: DWORD;
+    FCS_RunTime: TRTLCriticalSection;
     FCS_State: TRTLCriticalSection;
     FItems: array [0..cUnitIndex_Max] of TVSAGPS_UNIT;
     FOnGPSStateChanged: TVSAGPS_GPSStateChanged_DLL_Proc;
@@ -115,8 +116,8 @@ type
     procedure Lock_CS_State;
     procedure Unlock_CS_State;
 
-    procedure Lock_CS_CloseHandle;
-    procedure Unlock_CS_CloseHandle;
+    procedure Lock_CS_Runtime;
+    procedure Unlock_CS_Runtime;
 
     procedure WaitForALLState(const AStates: Tvsagps_GPSStates; const pbAbort: pBoolean);
 
@@ -226,6 +227,7 @@ begin
   FALLState:=gs_DoneDisconnected;
   ZeroMemory(@FItems, sizeof(FItems));
   InitializeCriticalSection(FCS_State);
+  InitializeCriticalSection(FCS_RunTime);
   FOnGPSStateChanged:=nil;
   FOnGPSTimeout:=nil;
 
@@ -272,6 +274,12 @@ begin
 {$ifend}
 
   inherited;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: delete runtime');
+{$ifend}
+
+  DeleteCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: end');
@@ -918,6 +926,7 @@ begin
   try
     repeat
       Sleep(0);
+      
       // if destroyed - go
       if (nil=APtrThread^) then begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
@@ -956,16 +965,16 @@ begin
 {$ifend}
 end;
 
-procedure TVSAGPS_UNITS.Lock_CS_CloseHandle;
+procedure TVSAGPS_UNITS.Lock_CS_Runtime;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_CloseHandle: in');
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_Runtime: in');
 {$ifend}
 
-  EnterCriticalSection(FCS_CloseHandle);
+  EnterCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_CloseHandle: ok');
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_Runtime: ok');
 {$ifend}
 end;
 
@@ -982,16 +991,16 @@ begin
 {$ifend}
 end;
 
-procedure TVSAGPS_UNITS.Unlock_CS_CloseHandle;
+procedure TVSAGPS_UNITS.Unlock_CS_Runtime;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_CloseHandle: in');
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_Runtime: in');
 {$ifend}
 
-  LeaveCriticalSection(FCS_CloseHandle);
+  LeaveCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_CloseHandle: ok');
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_Runtime: ok');
 {$ifend}
 end;
 

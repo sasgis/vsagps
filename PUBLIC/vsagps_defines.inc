@@ -16,6 +16,10 @@
 
 //////{$define VSAGPS_USE_UNICODE}
 
+{$ifdef VER230} // Delphi XE2 
+  {$define VSAGPS_XERCES_XML_IMPORT_FORBIDDEN}
+{$endif}
+
 {$if not defined(VSAGPS_XERCES_XML_IMPORT_FORBIDDEN)}
 {$define VSAGPS_USE_XERCES_XML_IMPORT}
 {$ifend}

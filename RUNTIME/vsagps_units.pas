@@ -48,6 +48,7 @@ type
   protected
     FGPSObject: TVSAGPS_UNITS;
     FGPSRunning: Boolean;
+    procedure PrepareToKill;
     procedure KillNow;
     procedure DoTerminateUnSync;
   public
@@ -65,7 +66,7 @@ type
   TVSAGPS_UNITS = class(TObject)
   private
     FNewUniqueIndex: DWORD;
-    FCS_RunTime: TRTLCriticalSection;
+    //FCS_RunTime: TRTLCriticalSection;
     FCS_State: TRTLCriticalSection;
     FItems: array [0..cUnitIndex_Max] of TVSAGPS_UNIT;
     FOnGPSStateChanged: TVSAGPS_GPSStateChanged_DLL_Proc;
@@ -102,6 +103,7 @@ type
     function InternalFindNewUnitIndex: Byte;
 
     procedure InternalCheckOnLastDisconnected;
+    procedure InternalPacketThreadLimitedWait(const APtrThread: Pvsagps_Thread);
     procedure InternalWaitRuntimeThread(const APtrThread: Pvsagps_Thread);
     procedure InternalOnDeviceThreadTerminate(Sender: TObject);
     procedure InternalTerminateRuntimeObjects; virtual;
@@ -227,7 +229,7 @@ begin
   FALLState:=gs_DoneDisconnected;
   ZeroMemory(@FItems, sizeof(FItems));
   InitializeCriticalSection(FCS_State);
-  InitializeCriticalSection(FCS_RunTime);
+  //InitializeCriticalSection(FCS_RunTime);
   FOnGPSStateChanged:=nil;
   FOnGPSTimeout:=nil;
 
@@ -279,7 +281,7 @@ begin
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: delete runtime');
 {$ifend}
 
-  DeleteCriticalSection(FCS_RunTime);
+  //DeleteCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Destroy: end');
@@ -690,6 +692,45 @@ begin
 {$ifend}
 end;
 
+procedure TVSAGPS_UNITS.InternalPacketThreadLimitedWait(const APtrThread: Pvsagps_Thread);
+var i: Byte;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalPacketThreadLimitedWait: begin');
+{$ifend}
+
+  try
+    i := 8;
+    repeat
+      Sleep(0);
+
+      if (i=0) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalPacketThreadLimitedWait: zero');
+{$ifend}
+        break;
+      end;
+
+      // if destroyed - go
+      if (nil=APtrThread^) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalPacketThreadLimitedWait: destroyed');
+{$ifend}
+        Exit;
+      end;
+        
+      Sleep(cWorkingThread_Devices_Delay_MSec);
+
+      Dec(i);
+    until FALSE;
+  except
+  end;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('TVSAGPS_UNITS.InternalPacketThreadLimitedWait: end');
+{$ifend}
+end;
+
 procedure TVSAGPS_UNITS.InternalPrepareItem(const AUnitIndex: Byte);
 begin
   with FItems[AUnitIndex] do begin
@@ -971,7 +1012,7 @@ begin
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_Runtime: in');
 {$ifend}
 
-  EnterCriticalSection(FCS_RunTime);
+  //EnterCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Lock_CS_Runtime: ok');
@@ -997,7 +1038,7 @@ begin
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_Runtime: in');
 {$ifend}
 
-  LeaveCriticalSection(FCS_RunTime);
+  //LeaveCriticalSection(FCS_RunTime);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('TVSAGPS_UNITS.Unlock_CS_Runtime: ok');
@@ -1084,6 +1125,19 @@ begin
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_Thread.KillNow: end');
+{$ifend}
+end;
+
+procedure Tvsagps_Thread.PrepareToKill;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.PrepareToKill: begin');
+{$ifend}
+
+  PDWORD(@(ThreadID))^:=0;
+  
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Thread.PrepareToKill: end');
 {$ifend}
 end;
 

@@ -34,6 +34,8 @@ type
   Tvsagps_Packet_Thread = class(Tvsagps_Thread)
   protected
     procedure Execute; override;
+  public
+    destructor Destroy; override;
   end;
 
   Tvsagps_object = class(TVSAGPS_UNITS)
@@ -114,26 +116,52 @@ begin
   VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: disconnected');
 {$ifend}
 
-  // kill object
-  Lock_CS_Runtime;
-  try
+  // kill thread
+  if (nil<>FPacketThread) then begin
+    // wait thread
+    InternalPacketThreadLimitedWait(@FPacketThread);
+
+    if (nil<>FPacketThread) then begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
-    VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: packet');
+      VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: killing');
 {$ifend}
-    FreeAndNil(FPacketThread);
-  finally
-    Unlock_CS_Runtime;
+      try
+        if (FPacketThread<>nil) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+          VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: prepare to kill');
+{$ifend}
+          FPacketThread.PrepareToKill;
+        end;
+      except
+      end;
+
+      try
+        if (FPacketThread<>nil) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+          VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: kill');
+{$ifend}
+          FreeAndNil(FPacketThread);
+        end;
+      except
+      end;
+
+      FPacketThread := nil;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: killed');
+{$ifend}
+    end;
   end;
 
-  Lock_CS_Runtime;
-  try
+  //Lock_CS_Runtime;
+  //try
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
     VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: queue');
 {$ifend}
     FreeAndNil(FPacketQueue);
-  finally
-    Unlock_CS_Runtime;
-  end;
+  //finally
+    //Unlock_CS_Runtime;
+  //end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_object.Destroy: inherited');
@@ -364,24 +392,26 @@ begin
 {$ifend}
 
   // kill thread
-  Lock_CS_Runtime;
-  try
+  //Lock_CS_Runtime;
+  //try
     if (nil<>FPacketThread) then begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
       VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: stop');
 {$ifend}
 
-      FPacketThread.GPSRunning:=FALSE;
+      if (nil<>FPacketThread) then
+        FPacketThread.GPSRunning:=FALSE;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
       VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: terminate');
 {$ifend}
 
-      FPacketThread.Terminate;
+      if (nil<>FPacketThread) then
+        FPacketThread.Terminate;
     end;
-  finally
-    Unlock_CS_Runtime;
-  end;
+  //finally
+    //Unlock_CS_Runtime;
+  //end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_object.InternalThreadRoutine_for_Packets: end');
@@ -606,11 +636,18 @@ begin
   VSAGPS_DebugAnsiString('Tvsagps_object.InternalOnPacketThreadTerminate: begin');
 {$ifend}
 
-  Lock_CS_Runtime;
-  try
-    FPacketThread:=nil;
-  finally
-    Unlock_CS_Runtime;
+  if (FPacketThread<>nil) then begin
+    Lock_CS_Runtime;
+    try
+      if (FPacketThread<>nil) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('Tvsagps_object.InternalOnPacketThreadTerminate: NIL');
+{$ifend}
+        FPacketThread:=nil;
+      end;
+    finally
+      Unlock_CS_Runtime;
+    end;
   end;
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
@@ -619,6 +656,26 @@ begin
 end;
 
 { Tvsagps_Packet_Thread }
+
+destructor Tvsagps_Packet_Thread.Destroy;
+begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Packet_Thread.Destroy: begin');
+{$ifend}
+
+  if (nil=Self) then begin
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+    VSAGPS_DebugAnsiString('Tvsagps_Packet_Thread.Destroy: nil');
+{$ifend}
+    Exit;
+  end;
+
+  inherited Destroy;
+
+{$if defined(VSAGPS_USE_DEBUG_STRING)}
+  VSAGPS_DebugAnsiString('Tvsagps_Packet_Thread.Destroy: end');
+{$ifend}
+end;
 
 procedure Tvsagps_Packet_Thread.Execute;
 begin

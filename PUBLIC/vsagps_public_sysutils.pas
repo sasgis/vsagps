@@ -56,6 +56,8 @@ function VSAGPS_WideString_To_Byte(const src: WideString;
 function VSAGPS_WideString_to_ISO8601_Time(const src: WideString;
                                            const pdt: PDateTime): Boolean;
 
+function ExtractBeforeSpaceDelimiter(var ASourceString: WideString): WideString;
+
 implementation
 
 function StrLenW(Src: PWideChar): DWORD;
@@ -419,5 +421,31 @@ begin
   Result:=TRUE;
 end;
 
+function ExtractBeforeSpaceDelimiter(var ASourceString: WideString): WideString;
+begin
+  Result := '';
+
+  // remove starting delimiters
+  while Length(ASourceString)>0 do begin
+    case ASourceString[1] of
+      #10,#13,#0,#32,#160:
+        System.Delete(ASourceString,1,1);
+      else
+        break;
+    end;
+  end;
+
+  // get before
+  while Length(ASourceString)>0 do begin
+    case ASourceString[1] of
+      #10,#13,#0,#32,#160:
+        break;
+      else begin
+        Result := Result + ASourceString[1];
+        System.Delete(ASourceString,1,1);
+      end;
+    end;
+  end;
+end;
 
 end.

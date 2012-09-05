@@ -351,6 +351,32 @@ var
       V_px_state.src_fmt:=xsf_XML;
   end;
 
+  procedure _Parse_gx_coord_to_Values(
+    const ANode: IDOMNode;
+    const pData: Pvsagps_XML_ParserResult
+  );
+  var
+    VTextValue, VLongitude, VLatitude: WideString;
+
+  begin
+    // <gx:coord>60.798387 56.748476 230.85376</gx:coord>
+    // fetch values into longitude, latitude, and altitude fields
+    VTextValue := VSAGPS_XML_DOMNodeValue(ANode);
+
+    VLongitude := ExtractBeforeSpaceDelimiter(VTextValue);
+    VLatitude := ExtractBeforeSpaceDelimiter(VTextValue);
+
+    // convert
+    if (Length(VLongitude)>0) and (Length(VLatitude)>0) then
+    if VSAGPS_WideString_to_Double(VLongitude, pData^.kml_data.fValues.longitude, AFS) then
+    if VSAGPS_WideString_to_Double(VLatitude, pData^.kml_data.fValues.latitude, AFS) then begin
+      // ok - set flags
+      Include(pData^.kml_data.fAvail_params,kml_latitude);
+      Include(pData^.kml_data.fAvail_params,kml_longitude);
+      // TODO: add altitude
+    end;
+  end;
+
   procedure _Parse_Attributes(
     const ANode: IDOMNode;
     const pData: Pvsagps_XML_ParserResult;
@@ -380,6 +406,9 @@ var
         // <SchemaData schemaUrl="#TrailHeadTypeId">
         // <SimpleData name="TrailHeadName">Pi in the sky</SimpleData>
 
+        if (pData^.kml_data.current_tag in [kml_gx_coord]) then begin
+          _Parse_gx_coord_to_Values(ANode, pData);
+        end;
       end;
 {$ifend}
       xsf_XML: begin

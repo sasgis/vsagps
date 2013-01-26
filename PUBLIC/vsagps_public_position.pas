@@ -58,6 +58,10 @@ type
     UTCTimeOK: Boolean;
     VSpeedOK: Boolean;
     AllowCalcStats: Boolean; // do not update statistics in fly-on-track mode
+  public
+    procedure Init;
+    function NotEmpty: Boolean;
+    function GetKMLCoordinate(const fs: TFormatSettings): AnsiString;
   end;
   PSingleGPSData = ^TSingleGPSData;
 
@@ -102,26 +106,38 @@ type
   end;
   PExecuteGPSCmd_WaypointData = ^TExecuteGPSCmd_WaypointData;
 
-procedure InitSingleGPSData(p: PSingleGPSData); inline;
-
-function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
-
-function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): AnsiString;
-
 implementation
 
-procedure InitSingleGPSData(p: PSingleGPSData);
+uses
+  Math;
+
+{ TSingleGPSData }
+
+function TSingleGPSData.GetKMLCoordinate(const fs: TFormatSettings): AnsiString;
 begin
-  ZeroMemory(p, sizeof(p^));
+  if Self.PositionOK then begin
+    Result:=FloatToStrF(Self.PositionLon, ffFixed, 18, 14, fs)+','+FloatToStrF(Self.PositionLat, ffFixed, 18, 14, fs);
+    // altitude
+    if not NoData_Float64(Self.Altitude) then begin
+      Result:=Result+','+FloatToStrF(Self.Altitude, ffFixed, 18, 10, fs);
+    end;
+  end else begin
+    Result:='';
+  end;
 end;
 
-function SingleGPSDataNotEmpty(const p: PSingleGPSData): Boolean;
+procedure TSingleGPSData.Init;
+begin
+  FillChar(Self, SizeOf(Self), 0);
+end;
+
+function TSingleGPSData.NotEmpty: Boolean;
 var
   b: PAnsiChar;
   w: SmallInt;
 begin
-  b := Pointer(p);
-  w := sizeof(p^);
+  b := Pointer(@Self);
+  w := sizeof(Self);
   while (0<w) do
   begin
     if (#0<>b^) then
@@ -133,18 +149,6 @@ begin
     Dec(w);
   end;
   Result := FALSE;
-end;
-
-function GetKMLCoordinate(const p: PSingleGPSData; const fs: TFormatSettings): AnsiString;
-begin
-  Result:='';
-  if (nil<>p) then
-  if p^.PositionOK then begin
-    Result:=FloatToStrF(p^.PositionLon, ffFixed, 18, 14, fs)+','+FloatToStrF(p^.PositionLat, ffFixed, 18, 14, fs);
-    // altitude
-    if not NoData_Float64(p^.Altitude) then
-      Result:=Result+','+FloatToStrF(p^.Altitude, ffFixed, 18, 10, fs);
-  end;
 end;
 
 end.

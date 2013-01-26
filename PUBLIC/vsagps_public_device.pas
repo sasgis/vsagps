@@ -55,6 +55,12 @@ type
                                            const btUnitIndex: Byte;
                                            const dwPacketType: DWORD;
                                            const pNmeaData: Pointer): DWORD; stdcall;
+  // nmea Echo Sounder handler
+  TVSAGPS_ECHOSOUNDER_HANDLER = function(const pUserPointer: Pointer;
+                                         const btUnitIndex: Byte;
+                                         const dwPacketType: DWORD;
+                                         const pSD: PVSAGPS_ECHOSOUNDER_DATA): DWORD; stdcall;
+
   // nmea GGA handler
   TVSAGPS_NMEA_GGA_HANDLER = function(const pUserPointer: Pointer;
                                       const btUnitIndex: Byte;
@@ -125,6 +131,8 @@ type
     // handlers for garmin packets
     pGARMIN_D800_HANDLER: TVSAGPS_GARMIN_D800_HANDLER; // D800 aka PVT
     pGARMIN_MEAS_HANDLER: TVSAGPS_GARMIN_MEAS_HANDLER; // Measurements
+    // handler for echo sounder
+    pECHOSOUNDER_HANDLER: TVSAGPS_ECHOSOUNDER_HANDLER;
     // handlers for nmea packets
     pNMEA_GGA_HANDLER: TVSAGPS_NMEA_GGA_HANDLER; // GGA sentences
     pNMEA_GLL_HANDLER: TVSAGPS_NMEA_GLL_HANDLER; // GLL sentences

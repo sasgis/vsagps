@@ -45,6 +45,7 @@ type
   end;
   PNmeaProprietary = ^TNmeaProprietary;
 
+  TOnECHOSOUNDERProc = function (const p: PVSAGPS_ECHOSOUNDER_DATA): DWORD of object;
   TOnGGAProc = function (const p: PNMEA_GGA): DWORD of object;
   TOnGLLProc = function (const p: PNMEA_GLL): DWORD of object;
   TOnGSAProc = function (const p: PNMEA_GSA): DWORD of object;
@@ -56,7 +57,25 @@ type
 
   TOnApplyUTCDateTimeProc = procedure (const ADate: PNMEA_Date; const ATime: PNMEA_Time) of object;
 
-  Tvsagps_parser_nmea = class(TStringList)
+  TStringListNmea = class(TStringList)
+  private
+    FFormatSettings: TFormatSettings;
+  private
+    procedure InitFormatSettings;
+  protected
+    procedure Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
+  public
+    function Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
+  end;
+
+  Tvsagps_echo_sounder_holder = class(TStringListNmea)
+  private
+    FECHOSOUNDER_DATA: TVSAGPS_ECHOSOUNDER_DATA;
+  public
+    constructor Create;
+  end;
+
+  Tvsagps_parser_nmea = class(TStringListNmea)
   public
     FOnApplyUTCDateTime: TOnApplyUTCDateTimeProc;
     FGSVNmeaCounterGP: Byte;
@@ -66,6 +85,7 @@ type
     // counter
     FGNGSANmeaCounter: Byte;
 
+    FOnECHOSOUNDER: TOnECHOSOUNDERProc;
     FOnGGA: TOnGGAProc;
     FOnGLL: TOnGLLProc;
     FOnGSA: TOnGSAProc;
@@ -75,7 +95,7 @@ type
     FOnVTG: TOnVTGProc;
 {$ifend}
 
-    FFormatSettings: TFormatSettings;
+    FEchoSounderHolder: Tvsagps_echo_sounder_holder;
     FProprietaries: array [Tgpms_Code] of TNmeaProprietary;
   protected
     function Internal_Parse_NmeaComm_Base_Sentence(
@@ -84,12 +104,13 @@ type
     ): DWORD;
     function Internal_Parse_NmeaComm_Talker_Sentence(const ATalkerID, ACommandID, AData: AnsiString): DWORD;
     function Internal_Parse_NmeaComm_Proprietary_Sentence(const ACommandID, AData: AnsiString): DWORD;
+    function Internal_Parse_NmeaComm_EchoSounder_Sentence(const ACmdId: TNMEA_SD_CMD_ID; const AData: AnsiString): DWORD;
+    function IsEchoSounderCommand(const ACommand: AnsiString; out AEchoSounderCmdId: TNMEA_SD_CMD_ID): Boolean;
   protected
     // helper routines
     procedure Parse_NMEA_Char(const AIndex: Byte; const AChar: PAnsiChar);
     procedure Parse_NMEA_Coord(const AIndexCoord, AIndexSymbol: Byte; const ACoord: PNMEA_Coord);
     procedure Parse_NMEA_Date(const AIndex: Byte; const ADate: PNMEA_Date);
-    procedure Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
     procedure Parse_NMEA_GSV_INFO(const AIndex: Byte; const AGSV_INFO: PNMEA_GSV_INFO);
     procedure Parse_NMEA_SatID(const AIndex: Byte; const APtrSatID: PVSAGPS_FIX_SAT);
     procedure Parse_NMEA_SInt16(const AIndex: Byte; const ASInt16: PSInt16);
@@ -104,8 +125,8 @@ type
     function Parse_and_Send_VTG_Data(const AData, ATalkerID: AnsiString): DWORD;
   public
     constructor Create;
+    destructor Destroy; override;
 
-    function Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
     function Parse_Sentence_Without_Starter(const ANmeaFullStringWithoutStarter: AnsiString): DWORD;
     // initialize special counters
     procedure InitSpecialNmeaCounters;
@@ -317,7 +338,9 @@ constructor Tvsagps_parser_nmea.Create;
 begin
   InitSpecialNmeaCounters;
 
+  FEchoSounderHolder:=nil;
   FOnApplyUTCDateTime:=nil;
+  FOnECHOSOUNDER:=nil;
   FOnGGA:=nil;
   FOnGLL:=nil;
   FOnGSA:=nil;
@@ -327,21 +350,18 @@ begin
   FOnVTG:=nil;
 {$ifend}  
 
-  GetLocaleFormatSettings(GetThreadLocale, FFormatSettings);
-  FFormatSettings.DecimalSeparator:=cNmea_Point;
+  InitFormatSettings;
+end;
+
+destructor Tvsagps_parser_nmea.Destroy;
+begin
+  FreeAndNil(FEchoSounderHolder);
+  inherited;
 end;
 
 procedure Tvsagps_parser_nmea.Enable_Proprietaries_SubCode(const ACode: Tgpms_Code; const ASubCode: Word);
 begin
   FProprietaries[ACode].SubCode := (FProprietaries[ACode].SubCode or ASubCode);
-end;
-
-function Tvsagps_parser_nmea.Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
-begin
-  if (AIndex>=Self.Count) then
-    Result:=''
-  else
-    Result:=Self[AIndex];
 end;
 
 procedure Tvsagps_parser_nmea.InitSpecialNmeaCounters;
@@ -359,31 +379,9 @@ function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_Base_Sentence(
 ): DWORD;
 var
   pComma: Integer;
+  VEchoSounderCmdId: TNMEA_SD_CMD_ID;
   Vcommand, Vdata: AnsiString;
-
-  procedure _DoProprietary;
-  begin
-    // nmea proprietary sentence
-    System.Delete(Vcommand, 1, 1); // delete starting 'P'
-    Result:=Internal_Parse_NmeaComm_Proprietary_Sentence(Vcommand, Vdata);
-  end;
-
-  procedure _DoQuery;
-  begin
-    // nmea query sentence
-  end;
-
-  procedure _DoTalker;
-  var Vtalkerid: AnsiString;
-  begin
-    // nmea talker sentence
-    if (4<Length(Vcommand)) then begin
-      // correct talker sentence
-      Vtalkerid:=System.Copy(Vcommand,1,2); // usually 'GP'
-      System.Delete(Vcommand,1,2);
-      Result:=Internal_Parse_NmeaComm_Talker_Sentence(Vtalkerid, Vcommand, Vdata);
-    end;
-  end;
+  Vtalkerid: AnsiString;
 begin
   pComma:=System.Pos(cNmea_Separator,ANmeaBaseString);
   if (pComma>0) then begin
@@ -394,18 +392,79 @@ begin
     // check command type
     if (0<Length(Vcommand)) then begin
       // command exists
-      if (cNmea_Proprietary=Vcommand[1]) then
-        _DoProprietary
-      else
-      if (cNmea_Query=Vcommand[Length(Vcommand)]) then
-        _DoQuery
-      else
-        _DoTalker;
+      if (cNmea_Proprietary=Vcommand[1]) then begin
+        // nmea proprietary sentence
+        System.Delete(Vcommand, 1, 1); // delete starting 'P'
+        Result:=Internal_Parse_NmeaComm_Proprietary_Sentence(Vcommand, Vdata);
+      end else if (cNmea_Query=Vcommand[Length(Vcommand)]) then begin
+        // nmea query sentence
+        Result := 0;
+      end else if IsEchoSounderCommand(Vcommand, VEchoSounderCmdId) then begin
+        // echo sounder sentence (SD)
+        Result:=Internal_Parse_NmeaComm_EchoSounder_Sentence(VEchoSounderCmdId, Vdata)
+      end else if (4<Length(Vcommand)) then begin
+        // nmea talker sentence
+        Vtalkerid:=System.Copy(Vcommand,1,2); // usually 'GP'
+        System.Delete(Vcommand,1,2);
+        Result:=Internal_Parse_NmeaComm_Talker_Sentence(Vtalkerid, Vcommand, Vdata);
+      end else begin
+        // invalid nmea talker sentence
+        Result := 0;
+      end;
     end else begin
       // no command
+      Result := 0;
     end;
   end else begin
     // no comma
+    Result := 0;
+  end;
+end;
+
+function Tvsagps_parser_nmea.Internal_Parse_NmeaComm_EchoSounder_Sentence(const ACmdId: TNMEA_SD_CMD_ID; const AData: AnsiString): DWORD;
+var
+  VFloat32: Float32;
+begin
+  Result := 0;
+
+  if not Assigned(FOnECHOSOUNDER) then
+    Exit;
+
+  if (nil=FEchoSounderHolder) then begin
+    FEchoSounderHolder := Tvsagps_echo_sounder_holder.Create;
+  end;
+
+  // parse data to stringlist
+  parse_string_to_strings(AData, cNmea_Separator, FEchoSounderHolder);
+
+  case ACmdId of
+    sdci_SDDBT: begin
+      // $SDDBT,47.2,f,14.39,M,7.87,F*00
+      FEchoSounderHolder.Parse_NMEA_Float32(2, @VFloat32);
+      with FEchoSounderHolder.FECHOSOUNDER_DATA do begin
+        depth_meters_changed := depth_meters_changed or Data.set_depth_meters(VFloat32);
+      end;
+    end;
+    sdci_SDDPT: begin
+      // $SDDPT,14.39,0.00*68
+      FEchoSounderHolder.Parse_NMEA_Float32(0, @VFloat32);
+      with FEchoSounderHolder.FECHOSOUNDER_DATA do begin
+        depth_meters_changed := depth_meters_changed or Data.set_depth_meters(VFloat32);
+      end;
+    end;
+    sdci_SDMTW: begin
+      // $SDMTW,16.2,C*01
+      FEchoSounderHolder.Parse_NMEA_Float32(0, @VFloat32);
+      with FEchoSounderHolder.FECHOSOUNDER_DATA do begin
+        temp_celcius_changed := temp_celcius_changed or Data.set_temp_celcius(VFloat32);
+      end;
+    end;
+  end;
+
+  // call handler
+  with FEchoSounderHolder.FECHOSOUNDER_DATA do
+  if depth_meters_changed or temp_celcius_changed then begin
+    FOnECHOSOUNDER(@(FEchoSounderHolder.FECHOSOUNDER_DATA));
   end;
 end;
 
@@ -479,6 +538,26 @@ begin
     parse_string_to_strings(AData, cNmea_Separator, Self);
     // call handler
     p(AData, ATalkerID);
+  end;
+end;
+
+function Tvsagps_parser_nmea.IsEchoSounderCommand(const ACommand: AnsiString; out AEchoSounderCmdId: TNMEA_SD_CMD_ID): Boolean;
+begin
+  Result := FALSE;
+  // check supported items only (see sdsf_* constants)
+  if (Length(ACommand)=5) and (ACommand[1]='S') and (ACommand[2]='D') then begin
+    if (ACommand[3]='D') and (ACommand[5]='T') then begin
+      if (ACommand[4]='B') then begin
+        AEchoSounderCmdId := sdci_SDDBT;
+        Inc(Result);
+      end else if (ACommand[4]='P') then begin
+        AEchoSounderCmdId := sdci_SDDPT;
+        Inc(Result);
+      end;
+    end else if (ACommand[3]='M') and (ACommand[4]='T') and (ACommand[5]='W') then begin
+      AEchoSounderCmdId := sdci_SDMTW;
+      Inc(Result);
+    end;
   end;
 end;
 
@@ -833,27 +912,6 @@ begin
   end;
 end;
 
-procedure Tvsagps_parser_nmea.Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
-  procedure _SetNoData;
-  begin
-    AFloat32^:=cGps_Float32_no_data;
-  end;
-var
-  s: AnsiString;
-begin
-  try
-    s:=Get_NMEAPart_By_Index(AIndex);
-    if (0=Length(s)) then begin
-      _SetNoData;
-    end else begin
-      // parse string
-      AFloat32^:=StrToFloat(s, FFormatSettings);
-    end;
-  except
-    _SetNoData;
-  end;
-end;
-
 procedure Tvsagps_parser_nmea.Parse_NMEA_GSV_INFO(const AIndex: Byte; const AGSV_INFO: PNMEA_GSV_INFO);
 begin
   // 4 = AIndex+0) satellite number
@@ -1021,6 +1079,52 @@ function Tvsagps_parser_nmea.SomeProprietariesSupported: Boolean;
 begin
   Result:=FProprietaries[gpms_Some].Supported;
   //Result:=FProprietaries[gpms_Unknown].Supported; // same check for supporting unknown (some others) proprietary sentences
+end;
+
+{ Tvsagps_echo_sounder_holder }
+
+constructor Tvsagps_echo_sounder_holder.Create;
+begin
+  inherited Create;
+  InitFormatSettings;
+  FECHOSOUNDER_DATA.Init;
+end;
+
+{ TStringListNmea }
+
+function TStringListNmea.Get_NMEAPart_By_Index(const AIndex: Byte): AnsiString;
+begin
+  if (AIndex>=Self.Count) then
+    Result:=''
+  else
+    Result:=Self[AIndex];
+end;
+
+procedure TStringListNmea.InitFormatSettings;
+begin
+  GetLocaleFormatSettings(GetThreadLocale, FFormatSettings);
+  FFormatSettings.DecimalSeparator:=cNmea_Point;
+end;
+
+procedure TStringListNmea.Parse_NMEA_Float32(const AIndex: Byte; const AFloat32: PFloat32);
+  procedure _SetNoData;
+  begin
+    AFloat32^:=cGps_Float32_no_data;
+  end;
+var
+  s: AnsiString;
+begin
+  try
+    s:=Get_NMEAPart_By_Index(AIndex);
+    if (0=Length(s)) then begin
+      _SetNoData;
+    end else begin
+      // parse string
+      AFloat32^:=StrToFloat(s, FFormatSettings);
+    end;
+  except
+    _SetNoData;
+  end;
 end;
 
 end.

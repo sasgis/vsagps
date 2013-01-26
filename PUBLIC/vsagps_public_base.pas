@@ -58,6 +58,7 @@ const
   nmea_ti_QZSS        = 'QZ'; // for Japanese QZSS
   nmea_ti_GNSS        = 'GN'; // MIXED: GPS + GLONASS ( + QZSS) simultaneously
   nmea_ti_MagComp     = 'HC'; // Heading – Magnetic Compass
+  nmea_ti_EchoSounder = 'SD'; // for Echo Sounder (water data)
 
   // glonass satellites from 65 and above
   cVSAGPS_Constellation_GLONASS_SatID = 64;

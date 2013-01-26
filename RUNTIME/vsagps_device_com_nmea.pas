@@ -120,6 +120,7 @@ begin
   inherited;
 
   FParser.FOnApplyUTCDateTime:=Do_RequestGPSCommand_Apply_UTCDateTime;
+  FParser.FOnECHOSOUNDER:=FParser_FOnECHOSOUNDER;
   FParser.FOnGGA:=FParser_FOnGGA;
   FParser.FOnGLL:=FParser_FOnGLL;
   FParser.FOnGSA:=FParser_FOnGSA;

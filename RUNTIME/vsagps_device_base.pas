@@ -157,6 +157,7 @@ type
   Tvsagps_device_with_nmea = class(Tvsagps_device_base)
   protected
     // nmea callback routines (set to parser)
+    function FParser_FOnECHOSOUNDER(const p: PVSAGPS_ECHOSOUNDER_DATA): DWORD;
     function FParser_FOnGGA(const p: PNMEA_GGA): DWORD;
     function FParser_FOnGLL(const p: PNMEA_GLL): DWORD;
     function FParser_FOnGSA(const p: PNMEA_GSA): DWORD;
@@ -964,6 +965,14 @@ begin
 end;
 
 { Tvsagps_device_with_nmea }
+
+function Tvsagps_device_with_nmea.FParser_FOnECHOSOUNDER(const p: PVSAGPS_ECHOSOUNDER_DATA): DWORD;
+begin
+  if Assigned(FALLDeviceParams^.pECHOSOUNDER_HANDLER) then
+    Result:=FALLDeviceParams^.pECHOSOUNDER_HANDLER(InternalGetUserPointer, FUnitIndex, FDefaultPacketType, p)
+  else
+    Result:=0;
+end;
 
 function Tvsagps_device_with_nmea.FParser_FOnGGA(const p: PNMEA_GGA): DWORD;
 begin

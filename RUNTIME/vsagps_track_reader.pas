@@ -120,6 +120,7 @@ procedure Tvsagps_track_reader.InternalCreateNmeaParser;
 begin
   if (nil=Fparser_nmea) then begin
     Fparser_nmea:=Tvsagps_parser_nmea.Create;
+    Fparser_nmea.FOnECHOSOUNDER:=FParser_FOnECHOSOUNDER;
     Fparser_nmea.FOnGGA:=FParser_FOnGGA;
     Fparser_nmea.FOnGLL:=FParser_FOnGLL;
     Fparser_nmea.FOnGSA:=FParser_FOnGSA;

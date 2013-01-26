@@ -32,7 +32,7 @@ const
 
   dpsffi_SaveToReuse  = $00000001; // load, parse and save file internally - COMPLETELY - before sending trackpoints to EXE (if not - just-in-time parse and send trackpoints)
   dpsffi_OnlyPosition = $00000002; // parse only position - for speed and low memory usage
-  
+
   cWorkingThread_Connection_Timeout_Sec = 30;
   cWorkingThread_Connection_Timeout_Min = 3;
   cWorkingThread_Default_Delay_Msec = 100;
@@ -315,6 +315,74 @@ type
   PNMEA_VTG = ^TNMEA_VTG;
 {$ifend}
 
+  // for echo sounder (SD) sentences
+
+  // echo sounder sentences enum
+  TNMEA_SD_CMD_ID = (
+    sdci_SDDBT,
+    sdci_SDDPT,
+    sdci_SDMTW
+  );
+
+  // SDVHW // Heading
+  // SDVLW // Distance
+  // SDWPL // Waypoint
+
+  TNMEA_SDDBT = packed record
+    // Depth Below Transducer
+    depth_feet_val: Float32;
+    depth_feet_sym: AnsiChar;
+    depth_meters_val: Float32;
+    depth_meters_sym: AnsiChar;
+    depth_fathoms_val: Float32;
+    depth_fathoms_sym: AnsiChar;
+  end;
+  PNMEA_SDDBT = ^TNMEA_SDDBT;
+
+  TNMEA_SDDPT = packed record
+    // Depth, in meters (+Offset from transducer)
+    depth_meters: Float32;
+    trans_offset: Float32;
+  end;
+  PNMEA_SDDPT = ^TNMEA_SDDPT;
+
+  TNMEA_SDMTW = packed record
+    // Water Temperature, in degrees Celcius
+    water_temp_val: Float32;
+    water_temp_sym: AnsiChar;
+  end;
+  PNMEA_SDMTW = ^TNMEA_SDMTW;
+
+  (*
+  TSingleEchoSounderField = packed record {size=6}
+    sd_val: Single;
+    sd_sym: AnsiChar;
+    chnged: Boolean;
+  end;
+  *)
+
+  TSingleEchoSounderData = packed record {size=8}
+    water_depth_meters: Single;
+    water_temp_celcius: Single;
+  public
+    procedure Init;
+    function assign_from(const AValue: TSingleEchoSounderData): Boolean;
+    function set_depth_meters(const ANewValue: Single): Boolean;
+    function set_temp_celcius(const ANewValue: Single): Boolean;
+  end;
+  PSingleEchoSounderData = ^TSingleEchoSounderData;  
+
+  TVSAGPS_ECHOSOUNDER_DATA = packed record
+    dwSize: Word;
+    // convert 2 next bytes to flags for extra data fields
+    depth_meters_changed: Boolean;
+    temp_celcius_changed: Boolean;
+    Data: TSingleEchoSounderData;
+  public
+    procedure Init;
+  end;
+  PVSAGPS_ECHOSOUNDER_DATA = ^TVSAGPS_ECHOSOUNDER_DATA;
+
   // list of null-terminated strings
   TVSAGPS_PCHAR_LIST = record
     dwCount: DWORD; // number of items
@@ -428,6 +496,46 @@ begin
   pPacket^.Packet_Type := APacket_Type;
   pPacket^.Packet_ID := APacket_ID;
   pPacket^.Data_Size := AData_Size;
+end;
+
+{ TSingleEchoSounderData }
+
+function TSingleEchoSounderData.assign_from(const AValue: TSingleEchoSounderData): Boolean;
+begin
+  Result := set_depth_meters(AValue.water_depth_meters) or
+            set_temp_celcius(AValue.water_temp_celcius);
+end;
+
+procedure TSingleEchoSounderData.Init;
+begin
+  water_depth_meters := cGps_Float32_no_data;
+  water_temp_celcius := cGps_Float32_no_data;
+end;
+
+function TSingleEchoSounderData.set_depth_meters(
+  const ANewValue: Single): Boolean;
+begin
+  Result := (PLongWord(@Self.water_depth_meters)^ <> PLongWord(@ANewValue)^);
+  if Result then
+    PLongWord(@Self.water_depth_meters)^ := PLongWord(@ANewValue)^;
+end;
+
+function TSingleEchoSounderData.set_temp_celcius(
+  const ANewValue: Single): Boolean;
+begin
+  Result := (PLongWord(@Self.water_temp_celcius)^ <> PLongWord(@ANewValue)^);
+  if Result then
+    PLongWord(@Self.water_temp_celcius)^ := PLongWord(@ANewValue)^;
+end;
+
+{ TVSAGPS_ECHOSOUNDER_DATA }
+
+procedure TVSAGPS_ECHOSOUNDER_DATA.Init;
+begin
+  dwSize := SizeOf(Self);
+  depth_meters_changed := FALSE;
+  temp_celcius_changed := FALSE;
+  Data.Init;
 end;
 
 end.

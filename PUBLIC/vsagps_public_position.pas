@@ -106,10 +106,23 @@ type
   end;
   PExecuteGPSCmd_WaypointData = ^TExecuteGPSCmd_WaypointData;
 
+procedure InitSingleGPSData(const AData: PSingleGPSData);
+function SingleGPSDataNotEmpty(const AData: PSingleGPSData): Boolean;
+
 implementation
 
 uses
   Math;
+
+procedure InitSingleGPSData(const AData: PSingleGPSData);
+begin
+  AData^.Init;
+end;
+
+function SingleGPSDataNotEmpty(const AData: PSingleGPSData): Boolean;
+begin
+  Result := AData^.NotEmpty;
+end;
 
 { TSingleGPSData }
 

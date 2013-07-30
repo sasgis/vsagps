@@ -14,13 +14,9 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   SysUtils,
   vsagps_public_sysutils,
+  vsagps_public_classes,
   vsagps_public_tracks;
 
 type
@@ -38,14 +34,16 @@ type
 
 function parse_string_to_strings(const ASource: AnsiString;
                                  const ASeparator: AnsiChar;
-                                 AStrings: TStrings;
+                                 AStrings: TStringsA;
                                  const AExitAfterParsedCount: Integer=0): LongInt;
 
 // parse single plt line
-function parse_plt_line(const ASource: AnsiString;
-                        const AData: PCoordLineData;
-                        const AStrings: TStrings;
-                        const AFormatSettings: TFormatSettings): Boolean;
+function parse_plt_line(
+  const ASource: AnsiString;
+  const AData: PCoordLineData;
+  const AStrings: TStringsA;
+  const AFormatSettings: TFormatSettings
+): Boolean;
 
 // parse single kml coordinate
 function parse_kml_coordinate(const ASource: WideString;
@@ -56,7 +54,7 @@ implementation
 
 function parse_string_to_strings(const ASource: AnsiString;
                                  const ASeparator: AnsiChar;
-                                 AStrings: TStrings;
+                                 AStrings: TStringsA;
                                  const AExitAfterParsedCount: Integer): LongInt;
 var
   p: Integer;
@@ -85,10 +83,12 @@ begin
   Result:=AStrings.Count;
 end;
 
-function parse_plt_line(const ASource: AnsiString;
-                        const AData: PCoordLineData;
-                        const AStrings: TStrings;
-                        const AFormatSettings: TFormatSettings): Boolean;
+function parse_plt_line(
+  const ASource: AnsiString;
+  const AData: PCoordLineData;
+  const AStrings: TStringsA;
+  const AFormatSettings: TFormatSettings
+): Boolean;
 var
   s: AnsiString;
 begin
@@ -105,22 +105,22 @@ begin
   if (7=AStrings.Count) then begin
     // coordinates
     try
-      AData^.lat0 := StrToFloat(Trim(AStrings[0]), AFormatSettings);
-      AData^.lon1 := StrToFloat(Trim(AStrings[1]), AFormatSettings);
+      AData^.lat0 := StrToFloatA(TrimA(AStrings[0]), AFormatSettings);
+      AData^.lon1 := StrToFloatA(TrimA(AStrings[1]), AFormatSettings);
       AData^.latlon_ok := TRUE;
     except
     end;
 
     // new_segment - only 0 or 1
-    AData^.new_seg:=('1'=Trim(AStrings[2]));
+    AData^.new_seg := ('1' = TrimA(AStrings[2]));
       
     // elevation
-    s:=Trim(AStrings[3]);
-    if (IntToStr(cPLT_no_Altitude)<>s) then
-      AData^.ele_ok := TryStrToFloat(s, AData^.ele, AFormatSettings);
+    s := TrimA(AStrings[3]);
+    if (IntToStrA(cPLT_no_Altitude) <> s) then
+      AData^.ele_ok := TryStrToFloatA(s, AData^.ele, AFormatSettings);
 
     // datetime
-    AData^.dt_ok := TryStrToFloat(Trim(AStrings[4]), Double(AData^.dt), AFormatSettings);
+    AData^.dt_ok := TryStrToFloatA(TrimA(AStrings[4]), Double(AData^.dt), AFormatSettings);
 
     Result := TRUE;
   end;

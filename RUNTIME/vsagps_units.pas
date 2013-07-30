@@ -130,9 +130,9 @@ type
                                          const ACommand: LongInt;
                                          const APointer: Pointer);
 
-    function AllocDeviceInfo(const AUnitIndex: Byte): PAnsiChar;
-    function AllocSupportedProtocols(const AUnitIndex: Byte): PAnsiChar;
-    function AllocUnitInfo(const AUnitIndex: Byte): PAnsiChar;
+    function AllocDeviceInfo(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
+    function AllocSupportedProtocols(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
+    function AllocUnitInfo(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
 
     property ALLDeviceUserPointer: Pointer read FALLDeviceUserPointer write FALLDeviceUserPointer;
 
@@ -149,68 +149,68 @@ type
 implementation
 
 uses
-  vsagps_memory,
+  vsagps_public_memory,
   vsagps_public_debugstring,
   vsagps_tools;
 
 { TVSAGPS_UNITS }
 
-function TVSAGPS_UNITS.AllocDeviceInfo(const AUnitIndex: Byte): PAnsiChar;
+function TVSAGPS_UNITS.AllocDeviceInfo(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
 begin
-  Result:=nil;
-  if (AUnitIndex<=cUnitIndex_Max) then
-  if (nil<>FItems[AUnitIndex].objDevice) then begin
+  Result := nil;
+  if (AUnitIndex <= cUnitIndex_Max) then
+  if (nil <> FItems[AUnitIndex].objDevice) then begin
     Lock_CS_State;
     try
       if (FItems[AUnitIndex].AllowGetDevInfo) then
       try
-        Result:=FItems[AUnitIndex].objDevice.AllocDeviceInfo;
+        Result := FItems[AUnitIndex].objDevice.AllocDeviceInfo(AIsWide);
       except
         VSAGPS_FreeAndNil_PChar(Result);
         raise;
       end;
     finally
-      Unlock_CS_State
+      Unlock_CS_State;
     end;
   end;
 end;
 
-function TVSAGPS_UNITS.AllocSupportedProtocols(const AUnitIndex: Byte): PAnsiChar;
+function TVSAGPS_UNITS.AllocSupportedProtocols(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
 begin
-  Result:=nil;
-  if (AUnitIndex<=cUnitIndex_Max) then
-  if (nil<>FItems[AUnitIndex].objDevice) then begin
+  Result := nil;
+  if (AUnitIndex <= cUnitIndex_Max) then
+  if (nil <> FItems[AUnitIndex].objDevice) then begin
     Lock_CS_State;
     try
       if (FItems[AUnitIndex].AllowGetDevInfo) then
       try
-        Result:=FItems[AUnitIndex].objDevice.AllocSupportedProtocols;
+        Result := FItems[AUnitIndex].objDevice.AllocSupportedProtocols(AIsWide);
       except
         VSAGPS_FreeAndNil_PChar(Result);
         raise;
       end;
     finally
-      Unlock_CS_State
+      Unlock_CS_State;
     end;
   end;
 end;
 
-function TVSAGPS_UNITS.AllocUnitInfo(const AUnitIndex: Byte): PAnsiChar;
+function TVSAGPS_UNITS.AllocUnitInfo(const AUnitIndex: Byte; out AIsWide: Boolean): Pointer;
 begin
-  Result:=nil;
-  if (AUnitIndex<=cUnitIndex_Max) then
-  if (nil<>FItems[AUnitIndex].objDevice) then begin
+  Result := nil;
+  if (AUnitIndex <= cUnitIndex_Max) then
+  if (nil <> FItems[AUnitIndex].objDevice) then begin
     Lock_CS_State;
     try
       if (FItems[AUnitIndex].AllowGetDevInfo) then
       try
-        Result:=FItems[AUnitIndex].objDevice.AllocUnitInfo;
+        Result := FItems[AUnitIndex].objDevice.AllocUnitInfo(AIsWide);
       except
         VSAGPS_FreeAndNil_PChar(Result);
         raise;
       end;
     finally
-      Unlock_CS_State
+      Unlock_CS_State;
     end;
   end;
 end;

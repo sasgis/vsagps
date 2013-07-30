@@ -15,13 +15,9 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
   vsagps_public_types,
+  vsagps_public_classes,
   vsagps_public_device,
   vsagps_public_unit_info,
   vsagps_public_unicode,
@@ -44,8 +40,8 @@ type
     FPtrCS_CloseHandle: PRTLCriticalSection;
     // Device info
     FUnitIndex: Byte;
-    FDeviceInfo: TStringList;
-    FSupportedProtocols: TStringList;
+    FDeviceInfo: TStringListA;
+    FSupportedProtocols: TStringListA;
     FUNIT_INFO: TVSAGPS_UNIT_INFO;
     FUNIT_INFO_Changed: TVSAGPS_UNIT_INFO_DLL_Proc;
     FUNIT_INFO_CS: PRTLCriticalSection;
@@ -86,7 +82,8 @@ type
     procedure InternalMakeUnitInfoCS;
     procedure InternalKillUnitInfoCS;
     procedure InternalWipeUnitInfoCS;
-    procedure InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: AnsiString);
+    procedure InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: string);
+    procedure InternalSetUnitInfoA(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: AnsiString);
     procedure InternalLockUnitInfoCS;
     procedure InternalUnlockUnitInfoCS;
 
@@ -137,9 +134,9 @@ type
                         const APacketSize: DWORD;
                         const AFlags: DWORD): LongBool; virtual; abstract;
 
-    function AllocSupportedProtocols: PAnsiChar;
-    function AllocDeviceInfo: PAnsiChar;
-    function AllocUnitInfo: PAnsiChar;
+    function AllocSupportedProtocols(out AIsWide: Boolean): Pointer;
+    function AllocDeviceInfo(out AIsWide: Boolean): Pointer;
+    function AllocUnitInfo(out AIsWide: Boolean): Pointer;
 
     property GPSDeviceHandle: THandle read FGPSDeviceHandle;
     property GPSDeviceType: DWORD read FGPSDeviceType;
@@ -176,7 +173,7 @@ implementation
 uses
   vsagps_public_garmin,
   vsagps_public_debugstring,
-  vsagps_memory;
+  vsagps_public_memory;
 
 function Is_Pid_RecMeasData_Type_Packet(const pPacket: PGarminUSB_Custom_Packet; const pdwAuxPacket: PDWORD): LongBool;
 begin
@@ -267,8 +264,8 @@ begin
   FGPSDeviceInfo_NameToConnectInternalW:=nil;
 {$ifend}
   FAutodetectObject:=nil;
-  FDeviceInfo:=TStringList.Create;
-  FSupportedProtocols:=TStringList.Create;
+  FDeviceInfo := TStringListA.Create;
+  FSupportedProtocols := TStringListA.Create;
   InternalResetDeviceConnectionParams;
   InternalWipeUnitInfoCS;
 end;
@@ -285,7 +282,7 @@ begin
   VSAGPS_DebugAnsiString('Tvsagps_device_base.Destroy: closed');
 {$ifend}
 
-  VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+  VSAGPS_FreeAndNil_PAnsiChar(FGPSDeviceInfo_NameToConnectInternalA);
 {$if defined(VSAGPS_USE_UNICODE)}
   VSAGPS_FreeAndNil_PWideChar(FGPSDeviceInfo_NameToConnectInternalW);
 {$ifend}
@@ -335,27 +332,30 @@ begin
       FRequestGPSCommand_Apply_UTCDateTime:=TRUE;
 end;
 
-function Tvsagps_device_base.AllocDeviceInfo: PAnsiChar;
+function Tvsagps_device_base.AllocDeviceInfo(out AIsWide: Boolean): Pointer;
 begin
+  AIsWide := CIsWide;
   if (nil=FDeviceInfo) or (0=FDeviceInfo.Count) then
     Result:=nil
   else
-    Result:=VSAGPS_AllocPCharByString(FDeviceInfo.Text,TRUE);
+    Result:=VSAGPS_AllocPCharByString(FDeviceInfo.Text, TRUE);
 end;
 
-function Tvsagps_device_base.AllocSupportedProtocols: PAnsiChar;
+function Tvsagps_device_base.AllocSupportedProtocols(out AIsWide: Boolean): Pointer;
 begin
+  AIsWide := CIsWide;
   if (nil=FSupportedProtocols) or (0=FSupportedProtocols.Count) then
     Result:=nil
   else
-    Result:=VSAGPS_AllocPCharByString(FSupportedProtocols.Text,TRUE);
+    Result:=VSAGPS_AllocPCharByString(FSupportedProtocols.Text, TRUE);
 end;
 
-function Tvsagps_device_base.AllocUnitInfo: PAnsiChar;
+function Tvsagps_device_base.AllocUnitInfo(out AIsWide: Boolean): Pointer;
 var
   i: TVSAGPS_UNIT_INFO_Kind;
   sl: TStringList;
 begin
+  AIsWide := CIsWide;
   sl:=TStringList.Create;
   try
     // to list
@@ -363,7 +363,7 @@ begin
       sl.Append(FUNIT_INFO[i]);
     end;
     // to result
-    Result:=VSAGPS_AllocPCharByString(sl.Text,TRUE);
+    Result:=VSAGPS_AllocPCharByString(sl.Text, TRUE);
   finally
     sl.Free;
   end;
@@ -593,7 +593,7 @@ begin
   FRequestGPSCommand_Apply_UTCDateTime:=FALSE;
 end;
 
-procedure Tvsagps_device_base.InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: AnsiString);
+procedure Tvsagps_device_base.InternalSetUnitInfo(const AKind: TVSAGPS_UNIT_INFO_Kind; const ANewValue: string);
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalSetUnitInfo: begin');
@@ -606,7 +606,14 @@ begin
       FUNIT_INFO[AKind] := ANewValue;
       // notify
       if Assigned(FUNIT_INFO_Changed) then
-        FUNIT_INFO_Changed(InternalGetUserPointer, FUnitIndex, FGPSDeviceType, AKind, PAnsiChar(ANewValue));
+        FUNIT_INFO_Changed(
+          InternalGetUserPointer,
+          FUnitIndex,
+          FGPSDeviceType,
+          AKind,
+          PChar(ANewValue),
+          (SizeOf(Char) = SizeOf(WideChar))
+        );
     end;
   finally
     InternalUnlockUnitInfoCS;
@@ -615,6 +622,14 @@ begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.InternalSetUnitInfo: end');
 {$ifend}
+end;
+
+procedure Tvsagps_device_base.InternalSetUnitInfoA(
+  const AKind: TVSAGPS_UNIT_INFO_Kind;
+  const ANewValue: AnsiString
+);
+begin
+  InternalSetUnitInfo(AKind, string(ANewValue));
 end;
 
 procedure Tvsagps_device_base.InternalUnlockCloseHandle;
@@ -681,7 +696,7 @@ begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_base.Internal_Before_Open_Device');
 {$ifend}
-  VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+  VSAGPS_FreeAndNil_PAnsiChar(FGPSDeviceInfo_NameToConnectInternalA);
 {$if defined(VSAGPS_USE_UNICODE)}
   VSAGPS_FreeAndNil_PWideChar(FGPSDeviceInfo_NameToConnectInternalW);
 {$ifend}
@@ -700,8 +715,8 @@ var
   procedure InternalSetNameA;
   var sDevDriverName: AnsiString;
   begin
-    SafeSetStringL(sDevDriverName, FGPSDeviceInfo_NameToConnectInternalA, dwDevNameLen);
-    InternalSetUnitInfo(guik_DeviceDriverName, sDevDriverName);
+    sDevDriverName := SafeSetStringL(FGPSDeviceInfo_NameToConnectInternalA, dwDevNameLen);
+    InternalSetUnitInfo(guik_DeviceDriverName, string(sDevDriverName));
   end;
 
   procedure InternalSetNameW;

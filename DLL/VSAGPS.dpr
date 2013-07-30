@@ -24,7 +24,7 @@ uses
   vsagps_public_unit_info,
   vsagps_public_sysutils,
   vsagps_public_version,
-  vsagps_memory,
+  vsagps_public_memory,
   vsagps_object,
   vsagps_track_writer,
   vsagps_track_saver,
@@ -79,7 +79,7 @@ begin
   Result:=FALSE;
   try
     if (nil<>AVSAGPS_HANDLE) then begin
-      SafeSetStringP(sDevName, AGPSDevName);
+      sDevName := SafeSetStringP(AGPSDevName);
       Result:=(Tvsagps_object(Pointer(AVSAGPS_HANDLE)).GPSConnect(AGPSDevType,
                                                                   sDevName,
                                                                   AFileSource,
@@ -230,40 +230,49 @@ begin
   end;
 end;
 
-function VSAGPS_GetSupportedProtocols(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
-                                      const AUnitIndex: Byte;
-                                      const AReserved: PDWORD): PAnsiChar; stdcall;
+function VSAGPS_GetSupportedProtocols(
+  const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
+  const AUnitIndex: Byte;
+  const AReserved: PDWORD;
+  out AIsWide: Boolean
+): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
     if (nil<>AVSAGPS_HANDLE) then begin
-      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocSupportedProtocols(AUnitIndex);
+      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocSupportedProtocols(AUnitIndex, AIsWide);
     end;
   except
   end;
 end;
 
-function VSAGPS_GetDeviceInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
-                              const AUnitIndex: Byte;
-                              const AReserved: PDWORD): PAnsiChar; stdcall;
+function VSAGPS_GetDeviceInfo(
+  const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
+  const AUnitIndex: Byte;
+  const AReserved: PDWORD;
+  out AIsWide: Boolean
+): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
     if (nil<>AVSAGPS_HANDLE) then begin
-      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocDeviceInfo(AUnitIndex);
+      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocDeviceInfo(AUnitIndex, AIsWide);
     end;
   except
   end;
 end;
 
-function VSAGPS_GetUnitInfo(const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
-                            const AUnitIndex: Byte;
-                            const AReserved: PDWORD): PAnsiChar; stdcall;
+function VSAGPS_GetUnitInfo(
+  const AVSAGPS_HANDLE: TVSAGPS_HANDLE;
+  const AUnitIndex: Byte;
+  const AReserved: PDWORD;
+  out AIsWide: Boolean
+): PAnsiChar; stdcall;
 begin
   Result:=nil;
   try
     if (nil<>AVSAGPS_HANDLE) then begin
-      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocUnitInfo(AUnitIndex);
+      Result:=Tvsagps_object(Pointer(AVSAGPS_HANDLE)).AllocUnitInfo(AUnitIndex, AIsWide);
     end;
   except
   end;

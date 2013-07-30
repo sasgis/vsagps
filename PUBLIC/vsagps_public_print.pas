@@ -38,20 +38,26 @@ const
 
 function Round_Float32_to_String(const f: Float32;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt=Low(TRoundToRange)): AnsiString;
+                                 const dec_round: ShortInt=Low(TRoundToRange)): string;
 function Round_Float64_to_String(const f: Float64;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt=Low(TRoundToRange)): AnsiString;
+                                 const dec_round: ShortInt=Low(TRoundToRange)): string;
 
 procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);
 
 implementation
 
-procedure do_after_to_str(var str_res: AnsiString; const fs: TFormatSettings);
-  function _DS(const aChr: AnsiChar): Boolean;
+procedure do_after_to_str(var str_res: string; const fs: TFormatSettings);
+
+  function _DS(const aChr: Char): Boolean;
   begin
-    Result:=((DecimalSeparator=Char(aChr)) or (fs.DecimalSeparator=Char(aChr)));
+    Result := (
+      (aChr = {$IF CompilerVersion >= 23}FormatSettings.{$ifend}DecimalSeparator)
+      or
+      (aChr = fs.DecimalSeparator)
+    );
   end;
+
 begin
   // del leading 0
   while (Length(str_res)>0) and (str_res[1]='0') do
@@ -70,7 +76,7 @@ end;
 
 function Round_Float32_to_String(const f: Float32;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt): AnsiString;
+                                 const dec_round: ShortInt): string;
 var j: Double;
 begin
   if NoData_Float32(f) then
@@ -93,7 +99,7 @@ end;
 
 function Round_Float64_to_String(const f: Float64;
                                  const fs: TFormatSettings;
-                                 const dec_round: ShortInt): AnsiString;
+                                 const dec_round: ShortInt): string;
 var j: Double;
 begin
   if NoData_Float64(f) then
@@ -116,7 +122,13 @@ end;
 
 procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);
 begin
+{$WARN SYMBOL_PLATFORM OFF}
+{$IF CompilerVersion < 23}
   GetLocaleFormatSettings(GetThreadLocale, AFormatSettings);
+{$ELSE}
+  AFormatSettings := TFormatSettings.Create(GetThreadLocale);
+{$IFEND}
+{$WARN SYMBOL_PLATFORM ON}
   AFormatSettings.DecimalSeparator:='.';
 end;
 

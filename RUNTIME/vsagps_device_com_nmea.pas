@@ -15,13 +15,9 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
   vsagps_public_types,
+  vsagps_public_classes,
   vsagps_public_sysutils,
   vsagps_public_device,
   vsagps_public_nmea,
@@ -48,7 +44,7 @@ type
   private
     procedure Do_RequestGPSCommand_Apply_UTCDateTime(const ADate: PNMEA_Date; const ATime: PNMEA_Time);
   protected
-    FUserIni: TStringList;
+    FUserIni: TStringListA;
     FIniReadOnly: Boolean;
     procedure InternalLoadUserIni;
     procedure InternalSendUserPackets;
@@ -83,7 +79,7 @@ type
 
     function Make_and_Send_NmeaComm_Packet(const AIncompletePacket: AnsiString): Boolean;
 
-    function Make_and_Send_NmeaComm_Packets(const sl_sent: TStrings): Integer;
+    function Make_and_Send_NmeaComm_Packets(const sl_sent: TStringsA): Integer;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -102,7 +98,7 @@ implementation
 
 uses
   vsagps_public_unit_info,
-  vsagps_memory,
+  vsagps_public_memory,
   vsagps_public_debugstring,
   vsagps_com_checker,
   vsagps_ini;
@@ -219,7 +215,7 @@ end;
 procedure Tvsagps_device_com_nmea.ExecuteGPSCommand(const ACommand: LongInt;
                                                     const APointer: Pointer);
 var
-  sl_sent, sl_prop: TStringList;
+  sl_sent, sl_prop: TStringListA;
   strParamName: AnsiString;
 
   procedure MakeProps;
@@ -246,7 +242,7 @@ begin
   if (gpsc_Set_DCB_Str_Info_A = ACommand) then
   if (nil<>APointer) then begin
     SetString(FDCB_Str_Info_A, PAnsiChar(APointer), StrLen(PAnsiChar(APointer)));
-    FDCB_Str_Info_A:=Trim(FDCB_Str_Info_A);
+    FDCB_Str_Info_A:=TrimA(FDCB_Str_Info_A);
     Exit;
   end;
 
@@ -254,14 +250,14 @@ begin
   if (gpsc_Reset_DGPS = ACommand) then
     strParamName:=vsagps_ini_resetdgps
   else if (gpsc_User_Base_Number <= ACommand) then
-    strParamName:=IntToStr(ACommand)
+    strParamName:=IntToStrA(ACommand)
   else
     strParamName:='';
 
   if (0<Length(strParamName)) then begin
     // different commands for different devices (by chipset)
-    sl_sent:=TStringList.Create;
-    sl_prop:=TStringList.Create;
+    sl_sent:=TStringListA.Create;
+    sl_prop:=TStringListA.Create;
     try
       // make proprietaries
       MakeProps;
@@ -319,12 +315,12 @@ end;
 
 procedure Tvsagps_device_com_nmea.InternalSendUserPackets;
 var
-  sl_sent: TStringList;
+  sl_sent: TStringListA;
 begin
   // send user defined packets on connection
   if (not FIniReadOnly) then
   if (FUserIni<>nil) then begin
-    sl_sent:=TStringList.Create;
+    sl_sent := TStringListA.Create;
     try
       // get nmea packets
       VSAGPS_ini_GetStartSent(FUserIni, sl_sent);
@@ -385,7 +381,7 @@ begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
         VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: make com name');
 {$ifend}
-        sNTname:='COM'+IntToStr(VAutodetectResult);
+        sNTname:='COM'+IntToStrA(VAutodetectResult);
         Sleep(0);
       end;
     finally
@@ -398,15 +394,15 @@ begin
 {$ifend}
 
   // To specify a COM port number greater than 9, use the following syntax: "\\.\COM10".
-  if (not (System.Pos(cNmea_NT_COM_Prefix,sNTname)>0)) then
-    sNTname:=cNmea_NT_COM_Prefix+sNTname;
+  if (not (PosA(cNmea_NT_COM_Prefix, sNTname)>0)) then
+    sNTname := cNmea_NT_COM_Prefix + sNTname;
       
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Before_Open_Device: cleanup');
 {$ifend}
 
   // make and fill buffer
-  VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+  VSAGPS_FreeAndNil_PAnsiChar(FGPSDeviceInfo_NameToConnectInternalA);
   FGPSDeviceInfo_NameToConnectInternalA:=VSAGPS_AllocPCharByString(sNTname, TRUE);
 
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
@@ -433,14 +429,13 @@ var
   pNmea_Tail, pNmea_Aux: Integer;
   i: Byte;
   new_part: AnsiString;
-
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.Internal_Parse_NmeaComm_Packets:');
   VSAGPS_DebugPAnsiChar(pPacket);
 {$ifend}
   Result:=0;
-  SafeSetStringP(new_part, pPacket);
+  new_part := SafeSetStringP(pPacket);
   FGlobalNmeaBuffer:=FGlobalNmeaBuffer+new_part;
   repeat
     if (0=Length(FGlobalNmeaBuffer)) then
@@ -452,7 +447,7 @@ begin
     // delete up to first cNmea_Starter
     //if Sametext(System.Copy(FGlobalNmeaBuffer, 1, Length(cNmea_Starter)), cNmea_Starter) then
       //System.Delete(FGlobalNmeaBuffer, 1, Length(cNmea_Starter));
-    pNmea_Aux:=System.Pos(cNmea_Starter, FGlobalNmeaBuffer);
+    pNmea_Aux := PosA(cNmea_Starter, FGlobalNmeaBuffer);
     if (1=pNmea_Aux) then
       System.Delete(FGlobalNmeaBuffer, 1, Length(cNmea_Starter))
     else if (1<pNmea_Aux) then begin
@@ -463,7 +458,7 @@ begin
     // check finish of sentence
     pNmea_Tail:=0;
     for i := 1 to Length(cNmea_Tail) do begin
-      pNmea_Aux:=System.Pos(cNmea_Tail[i], FGlobalNmeaBuffer);
+      pNmea_Aux := PosA(cNmea_Tail[i], FGlobalNmeaBuffer);
       if (pNmea_Aux>0) then
         if (pNmea_Aux>pNmea_Tail) then
           pNmea_Tail:=pNmea_Aux;
@@ -474,8 +469,8 @@ begin
       _CutNmeaByTail(pNmea_Tail);
     end else begin
       // no packet tail - check finisher or next starter
-      pNmea_Tail:=System.Pos(cNmea_Starter, FGlobalNmeaBuffer);
-      pNmea_Aux:=System.Pos(cNmea_Finisher, FGlobalNmeaBuffer);
+      pNmea_Tail := PosA(cNmea_Starter, FGlobalNmeaBuffer);
+      pNmea_Aux := PosA(cNmea_Finisher, FGlobalNmeaBuffer);
       if (0<pNmea_Tail) and (0<pNmea_Aux) and (pNmea_Aux<pNmea_Tail) then begin
         // next packet starter found and before it current finisher found
         _CutNmeaByTail(pNmea_Tail-1);
@@ -499,7 +494,7 @@ begin
   Result:=Send_NmeaComm_Packet(s);
 end;
 
-function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packets(const sl_sent: TStrings): Integer;
+function Tvsagps_device_com_nmea.Make_and_Send_NmeaComm_Packets(const sl_sent: TStringsA): Integer;
 var
   i: Integer;
   b: Boolean;
@@ -520,10 +515,10 @@ end;
 procedure Tvsagps_device_com_nmea.InternalLoadUserIni;
 begin
   try
-    if (FUserIni=nil) then
-      FUserIni:=TStringList.Create;
-    VSAGPS_ini_LoadFromFile(FUserIni, vsagps_nmea_ini_filename);
-    if (0=FUserIni.Count) then
+    if (nil = FUserIni) then
+      FUserIni := TStringListA.Create;
+    FUserIni.LoadFromFile(vsagps_nmea_ini_filename);
+    if (0 = FUserIni.Count) then
       FreeAndNil(FUserIni);
   except
     FreeAndNil(FUserIni);
@@ -545,13 +540,13 @@ begin
   if (0<FParser.Count) then
   try
     sType:=FParser.Get_NMEAPart_By_Index(0);
-    if Sametext(sType,'CS0') then begin
+    if SametextA(sType, 'CS0') then begin
       // $PCSI,CS0,PXXX-Y.YYY,SN,fff.f,M,ddd,R,SS,SNR,MTP,Q,ID,H,T
       // 1) CS0 Channel 0
       // 2) PXXX - Y.YYY Resident SBX-3 firmware version
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(1));
       // 3) S/N SBX-3 receiver serial number
-      InternalSetUnitInfo(guik_Unique_Unit_Number, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Unique_Unit_Number, FParser.Get_NMEAPart_By_Index(2));
       // 4) fff.f Channel 0 current frequency
       // 5) M Frequency Mode (‘A’ – Auto or ‘M’ – Manual)
       // 6) ddd MSK bit rate
@@ -571,26 +566,26 @@ end;
 function Tvsagps_device_com_nmea.Parse_Proprietary_DME_Data(const AData, ASubCommand: AnsiString): DWORD;
 var sType, sSubType, sValue: AnsiString;
 begin
-  Result:=0;
-  if (0<FParser.Count) then
+  Result := 0;
+  if (0 < FParser.Count) then
   try
     sType:=FParser.Get_NMEAPart_By_Index(0);
     if ('4'=sType) then begin
       // $PDME,4,3, GPS_LIBRARY_VERSION GPSLIB_5.4.1.5 GNU – Jun 11 2007 10:05:32
-      sSubType:=FParser.Get_NMEAPart_By_Index(1);
-      sValue:=FParser.Get_NMEAPart_By_Index(2);
+      sSubType := FParser.Get_NMEAPart_By_Index(1);
+      sValue := FParser.Get_NMEAPart_By_Index(2);
       if ('1'=sSubType) then begin
         // DeLorme firmware revision
-        InternalSetUnitInfo(guik_Firmware_Version, sValue);
+        InternalSetUnitInfoA(guik_Firmware_Version, sValue);
       end else if ('2'=sSubType) then begin
         // DeLorme hardware revision
-        InternalSetUnitInfo(guik_Hardware_Version, sValue);
+        InternalSetUnitInfoA(guik_Hardware_Version, sValue);
       end else if ('3'=sSubType) then begin
         // GPS library revision
-        InternalSetUnitInfo(guik_Software_Version, sValue);
+        InternalSetUnitInfoA(guik_Software_Version, sValue);
       end else if ('4'=sSubType) then begin
         // SBAS/WAAS library revision
-        InternalSetUnitInfo(guik_SBAS_Version, sValue);
+        InternalSetUnitInfoA(guik_SBAS_Version, sValue);
       end;
     end;
   except
@@ -605,14 +600,14 @@ begin
   if (0<FParser.Count) then
   try
     sType:=FParser.Get_NMEAPart_By_Index(0); // 1 Message ID = 100 (in sample)
-    if Sametext(sType,'100') then begin
+    if (sType = '100') then begin
       // PEMT 100 – Receiver ID
       // 2 Firmware Version  = 05.03A
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(1));
       // 3 Firmware Release Date 240701 ddmmyy
-      InternalSetUnitInfo(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
       // 4 Default Datum ID 082 xxx // 0 ~ 219, see Appendix – A
-      InternalSetUnitInfo(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(3));
+      InternalSetUnitInfoA(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(3));
     end;
   except
   end;
@@ -633,34 +628,34 @@ begin
     if ('M'=ASubCommand) then begin
       // PGRMM
       // 1) Currently active horizontal datum (WGS-84, NAD27 Canada, ED50, a.s.o)
-      InternalSetUnitInfo(guik_Datum_Name, Trim(AData));
+      InternalSetUnitInfoA(guik_Datum_Name, TrimA(AData));
     end else if ('T'=ASubCommand) then begin
       // PGRMT
       // 1) Product, model and software version (e.g. "GPS25VEE] 1.10")
-      InternalSetUnitInfo(guik_Model_Description_Full, Trim(FParser.Get_NMEAPart_By_Index(0)));
+      InternalSetUnitInfoA(guik_Model_Description_Full, TrimA(FParser.Get_NMEAPart_By_Index(0)));
       // 2) Rom checksum test: P = pass, F = fail
-      //InternalSetUnitInfo(guik_ROM_Checksum_Test, Get_NMEAPart_By_Index(1));
+      //InternalSetUnitInfoA(guik_ROM_Checksum_Test, Get_NMEAPart_By_Index(1));
       // 3) Receiver failure discrete: P = pass, F = fail
-      //InternalSetUnitInfo(guik_Receiver_Failure_Discrete, Get_NMEAPart_By_Index(2));
+      //InternalSetUnitInfoA(guik_Receiver_Failure_Discrete, Get_NMEAPart_By_Index(2));
       // 4) Stored data lost: R = retained, L = lost
-      //InternalSetUnitInfo(guik_Stored_Data_Lost, Get_NMEAPart_By_Index(3));
+      //InternalSetUnitInfoA(guik_Stored_Data_Lost, Get_NMEAPart_By_Index(3));
       // 5) Real time clock lost, R = retained, L = lost
-      //InternalSetUnitInfo(guik_Real_Time_Clock_Lost, Get_NMEAPart_By_Index(4));
+      //InternalSetUnitInfoA(guik_Real_Time_Clock_Lost, Get_NMEAPart_By_Index(4));
       // 6) 0scillator drift discrete: P = pass, F = excessive drift detected
-      //InternalSetUnitInfo(guik_0scillator_Drift_Discrete, Get_NMEAPart_By_Index(5));
+      //InternalSetUnitInfoA(guik_0scillator_Drift_Discrete, Get_NMEAPart_By_Index(5));
       // 7) Data collection discrete: C = collecting, null if not collecting
-      //InternalSetUnitInfo(guik_Data_Collection_Discrete, Get_NMEAPart_By_Index(6));
+      //InternalSetUnitInfoA(guik_Data_Collection_Discrete, Get_NMEAPart_By_Index(6));
       // 8) Board temperature in degrees C
-      //InternalSetUnitInfo(guik_Board_Temperature_in_Degrees_C, Get_NMEAPart_By_Index(7));
+      //InternalSetUnitInfoA(guik_Board_Temperature_in_Degrees_C, Get_NMEAPart_By_Index(7));
       // 9) Board configuration data: R = retained, L = lost
-      //InternalSetUnitInfo(guik_Board_Configuration_Data, Get_NMEAPart_By_Index(8));
+      //InternalSetUnitInfoA(guik_Board_Configuration_Data, Get_NMEAPart_By_Index(8));
     end else if ('C'=ASubCommand) then begin
       // PGRMC
       // 1) Fix mode, A=automatic (only option)
       // 2) Altitude above/below mean sea level, -1500.0 to 18000.0 meters
 
       // 3) Earth datum index. If the user datum index (96) is specified, fields 5-8 must contain valid values. Otherwise, fields 4-8 must be null.
-      InternalSetUnitInfo(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(2));
       // 4) User earth datum semi-major axis, 6360000.0 to 6380000.0 meters (.001 meters resolution)
       // 5) User earth datum inverse flattening factor, 285.0 to 310.0 (10-9 resolution)
       // 6) User earth datum delta x earth centered coordinate, -5000.0 to 5000.0 meters (1 meter resolution)
@@ -669,10 +664,10 @@ begin
 
       // 9) Differential mode, A = automatic (output DGPS data when available, non-DGPs otherwise), D = differential exclusively (output only differential fixes)
       // 10) NMEA Baud rate, 1 = 1200, 2 = 2400, 3 = 4800, 4 = 9600
-      InternalSetUnitInfo(guik_BaudRate, FParser.Get_NMEAPart_By_Index(9));
+      InternalSetUnitInfoA(guik_BaudRate, FParser.Get_NMEAPart_By_Index(9));
       // 11) Filter mode, 2 = no filtering (only option)
       // 12) PPS mode, 1 = No PPS, 2 = 1 Hz
-      InternalSetUnitInfo(guik_PPS_Mode, Internal_PPS_Mode(FParser.Get_NMEAPart_By_Index(11)));
+      InternalSetUnitInfoA(guik_PPS_Mode, Internal_PPS_Mode(FParser.Get_NMEAPart_By_Index(11)));
       // 13) Checksum
     end;
   except
@@ -688,12 +683,12 @@ begin
       // PMGNST
       //$PMGNST,xx.xx,m,t,nnn,xx.xx,nnn,nn,c
       // 1) Firmware version number?
-      InternalSetUnitInfo(guik_Firmware_Version, Trim(FParser.Get_NMEAPart_By_Index(0)));
+      InternalSetUnitInfoA(guik_Firmware_Version, TrimA(FParser.Get_NMEAPart_By_Index(0)));
       // 2) Mode (1 = no fix, 2 = 2D fix, 3 = 3D fix)
       // 3) T if we have a fix
       // 4) numbers change - unknown
       // 5) time left on the GPS battery in hours
-      InternalSetUnitInfo(guik_Battery_Left_in_Hours, Trim(FParser.Get_NMEAPart_By_Index(4)));
+      InternalSetUnitInfoA(guik_Battery_Left_in_Hours, TrimA(FParser.Get_NMEAPart_By_Index(4)));
       // 6) numbers change (freq. compensation?)
       // 7) PRN number receiving current focus
       // 8) nmea_checksum
@@ -702,13 +697,13 @@ begin
       // This message is used to send the model number of the GPS unit and its software version number.
       // sample: $PMGNVER,015,4.01,GPS3000XL*05
       // PID is a unique numerical product ID specifying the unit’s model.
-      InternalSetUnitInfo(guik_Product_ID, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Product_ID, FParser.Get_NMEAPart_By_Index(0));
       // SID is the software version number.
-      InternalSetUnitInfo(guik_Software_Version, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Software_Version, FParser.Get_NMEAPart_By_Index(1));
       // Model - The character field contains a text representation of the unit’s model name.
-      InternalSetUnitInfo(guik_Model_Description_Simple, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Model_Description_Simple, FParser.Get_NMEAPart_By_Index(2));
       // DBID is a set of three strings used to identify the database in certain aviation units.
-      InternalSetUnitInfo(guik_Database_ID, FParser.Get_NMEAPart_By_Index(3));
+      InternalSetUnitInfoA(guik_Database_ID, FParser.Get_NMEAPart_By_Index(3));
     end;
   except
   end;
@@ -721,17 +716,17 @@ begin
   try
     if ('530'=ASubCommand) then begin
       // PMTK_DT_DATUM - Current datum used
-      InternalSetUnitInfo(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(0));
     end else if ('704'=ASubCommand) then begin
       // PMTK_DT_VERSION - Version information of FW - max 3 lines
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(0));
-      InternalSetUnitInfo(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(1));
-      InternalSetUnitInfo(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
     end else if ('705'=ASubCommand) then begin
       // $PMTK705,AXN_1.30,0000,20090609,*20<CR><LF>
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(0));
-      InternalSetUnitInfo(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(1));
-      InternalSetUnitInfo(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(2));
     end else if ('CHN'=ASubCommand) then begin
       // PMTKCHN,23282,04292,20182,25182,27262,11142,31262,00000,....
       // GPS channel status (32 items):
@@ -757,11 +752,11 @@ begin
     if ('RID'=ASubCommand) then begin
       // $PRWIRID,12,00.90,12/25/95,0003,*40
       // 1 NUM_CHN Number of Channels xx = 12
-      InternalSetUnitInfo(guik_Channels, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Channels, FParser.Get_NMEAPart_By_Index(0));
       // 2 SW_VER Software Version x.x = 00.90
-      InternalSetUnitInfo(guik_Software_Version, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Software_Version, FParser.Get_NMEAPart_By_Index(1));
       // 3 SW_DATE Software Date cccccccc = 12/25/95
-      InternalSetUnitInfo(guik_Software_Release, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Software_Release, FParser.Get_NMEAPart_By_Index(2));
       // 4 OPT_LST Options List (Note 1) hhhh = 0003 // bit 0 minimize ROM usage // bit 1 minimize RAM usage // bits 2-15 reserved
       // 5 RES Reserved
     end;
@@ -812,19 +807,19 @@ begin
         // Version2:F-GPS-03-0702019 - this is FW Version
         // CHNL: 12
         // Baud rate: 38400
-        s:=FParser.Get_NMEAPart_By_Index(i);
-        p:=System.Pos(':',s);
-        if (p>0) then begin
-          t:=System.Copy(s,1,p-1);
-          System.Delete(s,1,p);
-          if SameText(t,'Version2') then
-            InternalSetUnitInfo(guik_Firmware_Version, Trim(s))
-          else if SameText(t,'Version') then
-            InternalSetUnitInfo(guik_Chipset_Version, Trim(s))
-          else if SameText(t,'Baud rate') then
-            InternalSetUnitInfo(guik_BaudRate, Trim(s))
-          else if SameText(t,'CHNL') then
-            InternalSetUnitInfo(guik_Channels, Trim(s));
+        s := FParser.Get_NMEAPart_By_Index(i);
+        p := PosA(':', s);
+        if (p > 0) then begin
+          t := System.Copy(s, 1, p-1);
+          System.Delete(s, 1, p);
+          if SameTextA(t, 'Version2') then
+            InternalSetUnitInfoA(guik_Firmware_Version, TrimA(s))
+          else if SameTextA(t, 'Version') then
+            InternalSetUnitInfoA(guik_Chipset_Version, TrimA(s))
+          else if SameTextA(t, 'Baud rate') then
+            InternalSetUnitInfoA(guik_BaudRate, TrimA(s))
+          else if SameTextA(t, 'CHNL') then
+            InternalSetUnitInfoA(guik_Channels, TrimA(s));
         end;
       end;
     end else if ('140'=ASubCommand) then begin
@@ -867,35 +862,35 @@ begin
     if ('ID'=ASubCommand) then begin
       // $PTNLID,097,01,XXX,XXX,DDMMYY*XX - ORIGINAL TRIMBLE
       // 1 Machine ID
-      InternalSetUnitInfo(guik_Machine_ID, FParser.Get_NMEAPart_By_Index(0)); // nonunique
+      InternalSetUnitInfoA(guik_Machine_ID, FParser.Get_NMEAPart_By_Index(0)); // nonunique
       // 2 Product ID
-      InternalSetUnitInfo(guik_Product_ID, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Product_ID, FParser.Get_NMEAPart_By_Index(1));
       // 3 Major firmware release number
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(2));
       // 4 Minor firmware release number
-      InternalSetUnitInfo(guik_Firmware_SubVersion, FParser.Get_NMEAPart_By_Index(3));
+      InternalSetUnitInfoA(guik_Firmware_SubVersion, FParser.Get_NMEAPart_By_Index(3));
       // 5 Firmware release date, in DD/MM/YY format
-      InternalSetUnitInfo(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(4));
+      InternalSetUnitInfoA(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(4));
     end else if ('RVR'=ASubCommand) then begin
       // $PTNLRVR,b,c..c,xx.xx.xx,xx,xx,xxxx*hh<CR><LF> - COPERNICUS
       // 1) b Reserved
       // Get_NMEAPart_By_Index(0)
       // 2) c..c Receiver Name
-      InternalSetUnitInfo(guik_Model_Description_Simple, FParser.Get_NMEAPart_By_Index(1));
+      InternalSetUnitInfoA(guik_Model_Description_Simple, FParser.Get_NMEAPart_By_Index(1));
       // 3) xx Major version
-      InternalSetUnitInfo(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(2));
+      InternalSetUnitInfoA(guik_Firmware_Version, FParser.Get_NMEAPart_By_Index(2));
       // 4) xx Minor version
-      InternalSetUnitInfo(guik_Firmware_SubVersion, FParser.Get_NMEAPart_By_Index(3));
+      InternalSetUnitInfoA(guik_Firmware_SubVersion, FParser.Get_NMEAPart_By_Index(3));
       // 5) xx Build version
-      InternalSetUnitInfo(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(4));
+      InternalSetUnitInfoA(guik_Firmware_Build, FParser.Get_NMEAPart_By_Index(4));
       // 6) xx Month
       // 7) xx Day
       // 8) xxxx Year
-      InternalSetUnitInfo(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(7)+'/'+FParser.Get_NMEAPart_By_Index(6)+'/'+FParser.Get_NMEAPart_By_Index(5));
+      InternalSetUnitInfoA(guik_Firmware_Release, FParser.Get_NMEAPart_By_Index(7)+'/'+FParser.Get_NMEAPart_By_Index(6)+'/'+FParser.Get_NMEAPart_By_Index(5));
     end else if ('RDM'=ASubCommand) then begin
       // $PTNLRDM,x..x,x.x,x.x,x.x,x.x,x.x*hh<CR><LF> - COPERNICUS
       // x..x Datum index from table or -9 for custom datum
-      InternalSetUnitInfo(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(0));
+      InternalSetUnitInfoA(guik_Datum_Index, FParser.Get_NMEAPart_By_Index(0));
       // x.x Dx
       // x.x Dy
       // x.x Dz
@@ -912,42 +907,42 @@ function Tvsagps_device_com_nmea.Parse_Proprietary_XEM_Data(const AData, ASubCom
                         guik_A_Build, guik_A_Release: TVSAGPS_UNIT_INFO_Kind);
   begin
     // Name - Variable length field; may be up to 17 characters long
-    InternalSetUnitInfo(guik_A_Name, FParser.Get_NMEAPart_By_Index(1));
+    InternalSetUnitInfoA(guik_A_Name, FParser.Get_NMEAPart_By_Index(1));
     // Maj version - Major version number (00 to 99)
-    InternalSetUnitInfo(guik_A_Version, FParser.Get_NMEAPart_By_Index(2));
+    InternalSetUnitInfoA(guik_A_Version, FParser.Get_NMEAPart_By_Index(2));
     // Min version - Minor version number (00 to 99)
-    InternalSetUnitInfo(guik_A_SubVersion, FParser.Get_NMEAPart_By_Index(3));
+    InternalSetUnitInfoA(guik_A_SubVersion, FParser.Get_NMEAPart_By_Index(3));
     // Beta version - Beta version number (00 to 99)
-    InternalSetUnitInfo(guik_A_Build, FParser.Get_NMEAPart_By_Index(4));
+    InternalSetUnitInfoA(guik_A_Build, FParser.Get_NMEAPart_By_Index(4));
     // Month - Month of the release (01 to 12)
     // Day - Day of the release (01 to 31)
     // Year - Year of the release
-    InternalSetUnitInfo(guik_A_Release, FParser.Get_NMEAPart_By_Index(7)+'/'+FParser.Get_NMEAPart_By_Index(6)+'/'+FParser.Get_NMEAPart_By_Index(5));
+    InternalSetUnitInfoA(guik_A_Release, FParser.Get_NMEAPart_By_Index(7)+'/'+FParser.Get_NMEAPart_By_Index(6)+'/'+FParser.Get_NMEAPart_By_Index(5));
   end;
 
 var
   sVR,sType: AnsiString;
 begin
   Result:=0;
-  if (0<FParser.Count) then
+  if (0 < FParser.Count) then
   try
-    sVR:=System.Copy(ASubCommand, 2, Length(ASubCommand));
-    if SameText(sVR, 'VR') then begin
+    sVR := System.Copy(ASubCommand, 2, Length(ASubCommand));
+    if SameTextA(sVR, 'VR') then begin
       // VERSIONS - $PXEMaVR,R,nucleus,04,03,10,27,2000*6E
-      sType:=FParser.Get_NMEAPart_By_Index(0);
-      if SameText(sType, 'M') then begin
+      sType := FParser.Get_NMEAPart_By_Index(0);
+      if SameTextA(sType, 'M') then begin
         // M = measurement platform (MPM) firmware
         SetForItems(guik_Firmware_Name, guik_Firmware_Version, guik_Firmware_SubVersion,
                     guik_Firmware_Build, guik_Firmware_Release);
-      end else if SameText(sType, 'N') then begin
+      end else if SameTextA(sType, 'N') then begin
         // N = FirstGPS Library
         SetForItems(guik_Software_Name, guik_Software_Version, guik_Software_SubVersion,
                     guik_Software_Build, guik_Software_Release);
-      end else if SameText(sType, 'U') then begin
+      end else if SameTextA(sType, 'U') then begin
         // U = native processor (CPU)
-      end else if SameText(sType, 'A') then begin
+      end else if SameTextA(sType, 'A') then begin
         // A = FirstGPS API
-      end else if SameText(sType, 'R') then begin
+      end else if SameTextA(sType, 'R') then begin
         // R = native RTOS
       end;
     end;
@@ -960,7 +955,7 @@ function Tvsagps_device_com_nmea.SendPacket(const APacketBuffer: Pointer;
                                             const AFlags: DWORD): LongBool;
 var s: AnsiString;
 begin
-  SafeSetStringL(s, APacketBuffer, APacketSize);
+  s := SafeSetStringL(PAnsiChar(APacketBuffer), APacketSize);
   // full packet or data only?
   if (gspf_FullPacket = (AFlags and gspf_FullPacket)) then begin
     // full packet

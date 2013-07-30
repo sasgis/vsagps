@@ -19,10 +19,11 @@ uses
   vsagps_classes,
 {$else}
   Classes,
-  Registry,
 {$ifend}
   //vsagps_public_com_checker, // do not use!
   vsagps_public_base,
+  vsagps_public_classes,
+  vsagps_public_sysutils,
   vsagps_public_events;
 
 const
@@ -31,7 +32,7 @@ const
 type
   TCOMCheckerThread = class(TThread)
   private
-    FCOMName: AnsiString;
+    FCOMName: string;
     FCOMHandle: THandle;
     FCOMFinished: Boolean;
     FCOMOpened: Boolean;
@@ -51,7 +52,7 @@ type
     procedure Execute; override;
   public
     destructor Destroy; override;
-    property COMName: AnsiString read FCOMName;
+    property COMName: string read FCOMName;
   end;
 
   TCOMCheckerObject = class(TObject)
@@ -135,7 +136,7 @@ begin
 end;
 *)
 
-function GetCOMDeviceFlags(const ADevNameLowercased: AnsiString): DWORD;
+function GetCOMDeviceFlags(const ADevNameUpperCased: AnsiString): DWORD;
 begin
   // common
   // \Device\BthModem0 - bluetooth ports
@@ -146,15 +147,15 @@ begin
   // Winachsf0  - fax/modem ports
   // \Device\QCUSB_COM4_1 or \Device\QCUSB_COM7_2 - sprint ports
 
-  if (0<System.Pos('bthmodem', ADevNameLowercased)) then
+  if (0 < PosA('BTHMODEM', ADevNameUpperCased)) then
     Result:=cCOM_src_BthModem
-  else if (0<System.Pos('serial', ADevNameLowercased)) then
+  else if (0 < PosA('SERIAL', ADevNameUpperCased)) then
     Result:=cCOM_src_Serial
-  else if (0<System.Pos('vcom', ADevNameLowercased)) then
+  else if (0 < PosA('VCOM', ADevNameUpperCased)) then
     Result:=cCOM_src_VCom
-  //else if (0<System.Pos('winachsf', ADevNameLowercased)) then
+  //else if (0 < PosA('WINACHSF', ADevNameUpperCased)) then
     //Result:=cCOM_src_Winachsf
-  //else if (0<System.Pos('qcusb_com', ADevNameLowercased)) then
+  //else if (0 < PosA('QCUSB_COM', ADevNameUpperCased)) then
     //Result:=cCOM_src_QCUSB_COM
   else
     Result:=cCOM_src_Others;
@@ -162,8 +163,8 @@ end;
 
 procedure GetAllCOMPortsList(AList: TStrings; const ADevFlags: DWORD);
 var
-  reg: TRegistry;
-  sl_names: TStringList;
+  reg: TRegistryA;
+  sl_names: TStringListA;
   
   procedure InternalAddFromKey(const AKeyName: AnsiString);
   var
@@ -171,6 +172,7 @@ var
     p: Integer;
     f: DWORD;
     i: Integer;
+    VExtValue: string;
   begin
     if reg.OpenKeyReadOnly(AKeyName) then begin
       // get all names
@@ -189,12 +191,13 @@ var
 
           if (0<Length(sValue)) then begin
             // port found - existing or new?
-            f:=GetCOMDeviceFlags(LowerCase(sName));
+            f:=GetCOMDeviceFlags(AnsiUpperCaseA(sName));
             if (0=ADevFlags) or (0<>(f and ADevFlags)) then begin
-              p:=AList.IndexOf(sValue);
+              VExtValue := string(sValue);
+              p:=AList.IndexOf(VExtValue);
               if (p<0) then begin
                 // new port - add to list
-                AList.AddObject(sValue, TObject(Pointer(DWORD(f))));
+                AList.AddObject(VExtValue, TObject(Pointer(DWORD(f))));
               end else begin
                 // existing port - modify flag
                 AList.Objects[p]:=TObject(Pointer(DWORD( DWORD(f) or DWORD(Pointer(AList.Objects[p])) )));
@@ -206,8 +209,8 @@ var
     end;
   end;
 begin
-  reg:=TRegistry.Create;
-  sl_names:=TStringList.Create;
+  reg := TRegistryA.Create;
+  sl_names := TStringListA.Create;
   try
     reg.RootKey:=HKEY_LOCAL_MACHINE;
     // make com list (with flags)
@@ -252,7 +255,7 @@ begin
   if dwTimeout>FCOMReadTimeout then
     dwTimeout:=FCOMReadTimeout;
 
-  FCOMHandle:=CreateFileA(PAnsiChar(FCOMName), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
+  FCOMHandle:=CreateFile(PChar(FCOMName), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
 
   if (0<>FCOMHandle) and (INVALID_HANDLE_VALUE<>FCOMHandle) then
   try

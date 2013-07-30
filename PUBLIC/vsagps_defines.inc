@@ -14,7 +14,9 @@
 
 //////{$define USE_NATIVE_NT_API}
 
-//////{$define VSAGPS_USE_UNICODE}
+{$IF CompilerVersion >= 23}
+////{$define VSAGPS_USE_UNICODE}
+{$IFEND}
 
 {$ifdef VER230} // Delphi XE2 
   {$define VSAGPS_XERCES_XML_IMPORT_FORBIDDEN}

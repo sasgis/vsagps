@@ -17,9 +17,10 @@ uses
   SysUtils,
   vsagps_public_base,
   vsagps_public_types,
+  vsagps_public_classes,
   vsagps_public_device,
+  vsagps_public_memory,
   vsagps_tools,
-  vsagps_memory,
   vsagps_object,
   vsagps_public_events,
   vsagps_public_unit_info,
@@ -58,71 +59,83 @@ begin
     gs_ProcessDisconnecting: Result:='Disconnecting';
     gs_DoneDisconnected: Result:='Disconnected';
   else
-    Result:='Tvsagps_GPSState('+IntToStr(Ord(st))+')';
+    Result:='Tvsagps_GPSState('+IntToStrA(Ord(st))+')';
   end;
 end;
   
-procedure StrW(var result_str: AnsiString; const wid: Integer; const ch: AnsiChar);
+procedure StrW(var result_str: string; const wid: Integer; const ch: Char);
 begin
-  while Length(result_str)<wid do
-    result_str:=ch+result_str;
+  while Length(result_str) < wid do
+    result_str := ch + result_str;
 end;
 
-function ByteToBinW(bt: Byte; const wid: Integer): AnsiString;
+function ByteToBinW(bt: Byte; const wid: Integer): string;
 begin
   Result := '';
-  while (bt<>0) do begin
-    Result := AnsiChar(Ord('0')+(bt and 1)) + Result;
+  while (bt <> 0) do begin
+    Result := Char(Ord('0')+(bt and 1)) + Result;
     bt := bt shr 1;
   end;
-  if (0=Length(Result)) then
+  if (0 = Length(Result)) then
     Result := '0';
-  StrW(Result,wid,'0');
+  StrW(Result, wid, '0');
 end;
 
-function IntToStrW(i: Integer; const wid: Integer): AnsiString;
+function IntToStrW(i: Integer; const wid: Integer): string;
 begin
-  Result:=IntToStr(i);
-  StrW(Result,wid,' ');
+  Result := IntToStr(i);
+  StrW(Result, wid, ' ');
 end;
 
-procedure PrintAndKill(p: PAnsiChar; bUnitInfo: Boolean);
+procedure PrintAndKill(
+  const ABuffer: Pointer;
+  const AIsWide: Boolean;
+  const AIsUnitInfo: Boolean
+);
 var
-  S: AnsiString;
   k: Integer;
   i: TVSAGPS_UNIT_INFO_Kind;
-  sl: TStringList;
+  VList: TStringListA;
+  VLine: AnsiString;
 begin
-  if (nil=p) then
+  if (nil = ABuffer) then
     Exit;
   try
-    SafeSetStringP(S, p);
-    if bUnitInfo then begin
+    if AIsUnitInfo then begin
       // lines with tags
-      sl:=TStringList.Create;
+      VList := TStringListA.Create;
       try
-        sl.Text:=S;
-        k:=sl.Count;
+        if AIsWide then begin
+          VList.SetFileContentW(WideString(PWideChar(ABuffer)));
+        end else begin
+          VList.SetFileContentA(AnsiString(PAnsiChar(ABuffer)));
+        end;
+
+        k := VList.Count;
         for i := Low(TVSAGPS_UNIT_INFO_Kind) to High(TVSAGPS_UNIT_INFO_Kind) do begin
           if (Ord(i)>=k) then
             break;
           if (0<Length(CUNIT_INFO_Kinds[i])) then begin
-            S:=sl[Ord(i)];
-            if (0<Length(S)) then begin
-              S := CUNIT_INFO_Kinds[i] + ': ' + S;
-              Writeln(S);
+            VLine := VList[Ord(i)];
+            if (0 < Length(VLine)) then begin
+              VLine := CUNIT_INFO_Kinds[i] + ': ' + VLine;
+              Writeln(VLine);
             end;
           end;
         end;
       finally
-        sl.Free;
+        VList.Free;
       end;
     end else begin
       // simple text
-      Writeln(S);
+      if AIsWide then begin
+        Writeln(SafeSetStringP(PWideChar(ABuffer)));
+      end else begin
+        Writeln(SafeSetStringP(PAnsiChar(ABuffer)));
+      end;
     end;
   finally
-    VSAGPS_FreeMem(p);
+    VSAGPS_FreeMem(ABuffer);
   end;
 end;
 
@@ -130,6 +143,9 @@ procedure rTVSAGPS_SESSION_STARTED_HANDLER(const pUserPointer: Pointer;
                                            const btUnitIndex: Byte;
                                            const dwGPSDevType: DWORD;
                                            const pdwReserved: PDWORD); stdcall;
+var
+  VBuffer: Pointer;
+  VIsWide: Boolean;
 begin
   if (nil=pUserPointer) then
     Exit;
@@ -139,18 +155,24 @@ begin
   // write info and protocols
   Writeln('');
   Writeln('PROTOCOLS:');
-  with TGarminInfoObject(pUserPointer) do
-  PrintAndKill(AllocSupportedProtocols(FUnitIndex), FALSE);
+  with TGarminInfoObject(pUserPointer) do begin
+    VBuffer := AllocSupportedProtocols(FUnitIndex, VIsWide);
+    PrintAndKill(VBuffer, VIsWide, False);
+  end;
 
   Writeln('');
   Writeln('DEVICEINFO:');
-  with TGarminInfoObject(pUserPointer) do
-  PrintAndKill(AllocDeviceInfo(FUnitIndex), FALSE);
+  with TGarminInfoObject(pUserPointer) do begin
+    VBuffer := AllocDeviceInfo(FUnitIndex, VIsWide);
+    PrintAndKill(VBuffer, VIsWide, False);
+  end;
 
   Writeln('');
   Writeln('UNITINFO:');
-  with TGarminInfoObject(pUserPointer) do
-  PrintAndKill(AllocUnitInfo(FUnitIndex), TRUE);
+  with TGarminInfoObject(pUserPointer) do begin
+    VBuffer := AllocUnitInfo(FUnitIndex, VIsWide);
+    PrintAndKill(VBuffer, VIsWide, True);
+  end;
 end;
 
 function rTVSAGPS_GARMIN_D800_HANDLER(const pUserPointer: Pointer;

@@ -13,11 +13,8 @@ interface
 uses
   Windows,
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
+  vsagps_public_sysutils,
+  vsagps_public_classes,
   vsagps_public_nmea;
 
 const
@@ -40,82 +37,72 @@ const
   vsagps_ini_CheckByNumericProductID = 'CheckByNumericProductID';
   vsagps_ini_CheckByModelDescription = 'CheckByModelDescription';
 
-// load entire ini from file
-procedure VSAGPS_ini_LoadFromFile(sl: TStrings; const AIniFileName: String); // String OK
-
 // get all user defined sentances to send on connect
-procedure VSAGPS_ini_GetStartSent(sl_Ini, sl_Sent: TStrings);
+procedure VSAGPS_ini_GetStartSent(sl_Ini, sl_Sent: TStringsA);
 
 // get all user defined sentances to send on "refresh dgps" command and user defined commands
-procedure VSAGPS_ini_GetSent_ForGPSCommand(sl_Ini, sl_Sent, sl_Prop: TStrings; const AParamName: AnsiString);
+procedure VSAGPS_ini_GetSent_ForGPSCommand(sl_Ini, sl_Sent, sl_Prop: TStringsA; const AParamName: Ansistring);
 
 // get section header position (comments allowed)
-function VSAGPS_ini_GetSectionHeader(sl_Ini: TStrings;
-                                     const SectionNameUppercased: AnsiString;
-                                     out StartSectionIndex: Integer): Boolean;
+function VSAGPS_ini_GetSectionHeader(
+  sl_Ini: TStringsA;
+  const SectionNameUppercased: AnsiString;
+  out StartSectionIndex: Integer
+): Boolean;
 
 // check param name and extract tail
-function VSAGPS_ini_StartPromParam(const ASrc: AnsiString; const AParam: AnsiString; out ATail: AnsiString): Boolean;
+function VSAGPS_ini_StartPromParam(
+  const ASrc: AnsiString;
+  const AParam: AnsiString;
+  out ATail: AnsiString
+): Boolean;
 
-function Append_Gpms_Subcodes(const ACode: Tgpms_Code; const ASubCodes: Word; sl_prop: TStrings): Integer;
+function Append_Gpms_Subcodes(const ACode: Tgpms_Code; const ASubCodes: Word; sl_prop: TStringsA): Integer;
 
-function VSAGPS_ini_IsReadOnly(sl_Ini: TStrings): Boolean;
+function VSAGPS_ini_IsReadOnly(sl_Ini: TStringsA): Boolean;
 
 implementation
-
-procedure VSAGPS_ini_LoadFromFile(sl: TStrings; const AIniFileName: String); // String OK
-var fs: TFileStream;
-begin
-  if (not FileExists(AIniFileName)) then
-    Exit;
-  fs := TFileStream.Create(AIniFileName, fmOpenRead);
-  try
-    sl.LoadFromStream(fs);
-  finally
-    fs.Free;
-  end;
-end;
 
 function VSAGPS_ini_DelComment(const AString: AnsiString): AnsiString;
 var p: Integer;
 begin
-  Result:=AString;
-  p:=System.Pos(vsagps_ini_comment,Result);
-  if (0<p) then begin
-    SetLength(Result,p-1);
-    Result:=Trim(Result);
-  end else begin
-    Result:=Trim(Result);
+  Result := AString;
+  p := PosA(vsagps_ini_comment, Result);
+  if (0 < p) then begin
+    SetLength(Result, p-1);
   end;
+  Result := TrimA(Result);
 end;
 
 function VSAGPS_ini_GetAfterEq(const AString: AnsiString): AnsiString;
 var p: Integer;
 begin
-  p:=System.Pos(vsagps_ini_eq, AString);
-  if (0<p) then begin
-    Result:=System.Copy(AString, p+1, Length(AString));
+  p := PosA(vsagps_ini_eq, AString);
+  if (0 < p) then begin
+    Result := System.Copy(AString, p+1, Length(AString));
   end else begin
     // mandatory
-    Result:='';
+    Result := '';
   end;
 end;
 
-function VSAGPS_ini_GetSectionHeader(sl_Ini: TStrings;
-                                     const SectionNameUppercased: AnsiString;
-                                     out StartSectionIndex: Integer): Boolean;
+function VSAGPS_ini_GetSectionHeader(
+  sl_Ini: TStringsA;
+  const SectionNameUppercased: AnsiString;
+  out StartSectionIndex: Integer
+): Boolean;
 var s: AnsiString;
 begin
-  Result:=FALSE;
-  StartSectionIndex:=0;
-  while StartSectionIndex<sl_Ini.Count do begin
-    s:=sl_Ini[StartSectionIndex];
-    if (0<Length(s)) then
-    if (vsagps_ini_sectiona=s[1]) then begin
+  Result := False;
+  StartSectionIndex := 0;
+  while StartSectionIndex < sl_Ini.Count do begin
+    s := sl_Ini[StartSectionIndex];
+    if (0 < Length(s)) then
+    if (vsagps_ini_sectiona = s[1]) then begin
       // start of some section
-      s:=VSAGPS_ini_DelComment(s);
-      if SameText(s, vsagps_ini_sectiona+SectionNameUppercased+vsagps_ini_sectionb) then begin
-        Result:=TRUE;
+      s := VSAGPS_ini_DelComment(s);
+      if SameTextA(s, vsagps_ini_sectiona+SectionNameUppercased+vsagps_ini_sectionb) then begin
+        Result := True;
         Exit;
       end;
     end;
@@ -123,22 +110,28 @@ begin
   end;
 end;
 
-function VSAGPS_ini_StartPromParam(const ASrc: AnsiString; const AParam: AnsiString; out ATail: AnsiString): Boolean;
+function VSAGPS_ini_StartPromParam(
+  const ASrc: AnsiString;
+  const AParam: AnsiString;
+  out ATail: AnsiString
+): Boolean;
 begin
   Result:=FALSE;
   ATail:='';
-  if SameText(AParam, System.Copy(ASrc, 1, Length(AParam))) then begin
+  if SameTextA(AParam, System.Copy(ASrc, 1, Length(AParam))) then begin
     Result:=TRUE;
     ATail:=System.Copy(ASrc, Length(AParam)+1, Length(ASrc));
   end;
 end;
 
-function VSAGPS_ini_ForeachSection(sl_Ini: TStrings;
-                                   sl_Result: TStrings;
-                                   const SectionNameUppercased: AnsiString;
-                                   const ParamName: AnsiString;
-                                   const ParseLinks: Boolean;
-                                   const ParseOthers: Boolean): Boolean;
+function VSAGPS_ini_ForeachSection(
+  sl_Ini: TStringsA;
+  sl_Result: TStringsA;
+  const SectionNameUppercased: AnsiString;
+  const ParamName: AnsiString;
+  const ParseLinks: Boolean;
+  const ParseOthers: Boolean
+): Boolean;
 var
   i: Integer;
   s,s_tail: AnsiString;
@@ -156,23 +149,23 @@ begin
           Exit;
         end else if VSAGPS_ini_StartPromParam(s, ParamName, s_tail) then begin
           // startN or startfromsectionN
-          Result:=TRUE;
-          s_tail:=VSAGPS_ini_DelComment(s_tail);
+          Result := True;
+          s_tail := VSAGPS_ini_DelComment(s_tail);
           if VSAGPS_ini_StartPromParam(s_tail, vsagps_ini_fromsection, s) then begin
             // startfromsectionN
             if ParseLinks then begin
               // only if available
-              s:=Uppercase(Trim(VSAGPS_ini_GetAfterEq(s)));
+              s := AnsiUpperCaseA(TrimA(VSAGPS_ini_GetAfterEq(s)));
               VSAGPS_ini_ForeachSection(sl_Ini, sl_Result, s, ParamName, FALSE, ParseOthers);
             end;
           end else begin
             // startN
-            s_tail:=VSAGPS_ini_GetAfterEq(s_tail);
-            if (0<Length(s_tail)) then begin
+            s_tail := VSAGPS_ini_GetAfterEq(s_tail);
+            if (0 < Length(s_tail)) then begin
               // if cannot save to sl_Result - check value and return result
-              if (nil=sl_Result) then begin
+              if (nil = sl_Result) then begin
                 // check single value as integer
-                Result := (s_tail<>'0');
+                Result := (s_tail <> '0');
               end else begin
                 // add to result list
                 sl_Result.Append(s_tail);
@@ -187,16 +180,16 @@ begin
   end;
   // section not found - look for /others
   if ParseOthers and (not Result) then begin
-    i:=System.Pos(vsagps_ini_subcodes, SectionNameUppercased);
-    if (0<i) then begin
-      s:=System.Copy(SectionNameUppercased, 1, i) + Uppercase(vsagps_ini_others);
-      if (not SameText(s, SectionNameUppercased)) then
-        Result:=VSAGPS_ini_ForeachSection(sl_Ini, sl_Result, s, ParamName, ParseLinks, FALSE);
+    i := PosA(vsagps_ini_subcodes, SectionNameUppercased);
+    if (0 < i) then begin
+      s := System.Copy(SectionNameUppercased, 1, i) + AnsiUpperCaseA(vsagps_ini_others);
+      if (not SameTextA(s, SectionNameUppercased)) then
+        Result := VSAGPS_ini_ForeachSection(sl_Ini, sl_Result, s, ParamName, ParseLinks, FALSE);
     end;
   end;
 end;
 
-procedure VSAGPS_ini_GetStartSent(sl_Ini, sl_Sent: TStrings);
+procedure VSAGPS_ini_GetStartSent(sl_Ini, sl_Sent: TStringsA);
 begin
   // preamble
   if (sl_Sent=nil) then
@@ -212,7 +205,7 @@ begin
   VSAGPS_ini_ForeachSection(sl_Ini, sl_Sent, vsagps_ini_common, vsagps_ini_start, TRUE, FALSE);
 end;
 
-procedure VSAGPS_ini_GetSent_ForGPSCommand(sl_Ini, sl_Sent, sl_Prop: TStrings; const AParamName: AnsiString);
+procedure VSAGPS_ini_GetSent_ForGPSCommand(sl_Ini, sl_Sent, sl_Prop: TStringsA; const AParamName: Ansistring);
 var
   i: Integer;
 begin
@@ -238,7 +231,7 @@ begin
   end;
 end;
 
-function Append_Gpms_Subcodes(const ACode: Tgpms_Code; const ASubCodes: Word; sl_prop: TStrings): Integer;
+function Append_Gpms_Subcodes(const ACode: Tgpms_Code; const ASubCodes: Word; sl_prop: TStringsA): Integer;
 var s: AnsiString;
 begin
   Result:=0;
@@ -255,7 +248,7 @@ begin
   end;
 end;
 
-function VSAGPS_ini_IsReadOnly(sl_Ini: TStrings): Boolean;
+function VSAGPS_ini_IsReadOnly(sl_Ini: TStringsA): Boolean;
 begin
   Result := FALSE;
   if (nil=sl_Ini) then

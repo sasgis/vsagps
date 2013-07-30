@@ -73,15 +73,17 @@ type
                                           const btUnitIndex: Byte;
                                           const dwGPSDevType: DWORD;
                                           const eKind: TVSAGPS_UNIT_INFO_Kind;
-                                          const szValue: PAnsiChar); stdcall;
+                                          const szValue: Pointer;
+                                          const AIsWide: Boolean
+                                          ); stdcall;
 
   // container (never transmit between EXE and DLL!)
-  TVSAGPS_UNIT_INFO = array [TVSAGPS_UNIT_INFO_Kind] of AnsiString;
+  TVSAGPS_UNIT_INFO = array [TVSAGPS_UNIT_INFO_Kind] of string;
   PVSAGPS_UNIT_INFO = ^TVSAGPS_UNIT_INFO;
 
 procedure Clear_TVSAGPS_UNIT_INFO(p: PVSAGPS_UNIT_INFO);
 
-function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): AnsiString;
+function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): string;
 
 // true if parameter is used in Generate_*
 function VSAGPS_ChangedFor_GPSUnitInfo(const eKind: TVSAGPS_UNIT_INFO_Kind): Boolean;
@@ -138,6 +140,9 @@ const
 
 implementation
 
+uses
+  vsagps_public_sysutils;
+
 procedure Clear_TVSAGPS_UNIT_INFO(p: PVSAGPS_UNIT_INFO);
 var i: TVSAGPS_UNIT_INFO_Kind;
 begin
@@ -145,16 +150,16 @@ begin
     p^[i] := '';
 end;
 
-function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): AnsiString;
+function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): string;
 
   procedure InternalTryToAdd(const AKind: TVSAGPS_UNIT_INFO_Kind;
-                             const APrefix: AnsiString='';
-                             const ASuffix: AnsiString='';
+                             const APrefix: string='';
+                             const ASuffix: string='';
                              const AMaxLen: Integer=0;
-                             const ASubstOnMaxLen: AnsiString='';
+                             const ASubstOnMaxLen: string='';
                              const AKind2: TVSAGPS_UNIT_INFO_Kind=guik_ClearALL);
   var
-    s: AnsiString;
+    s: string;
     i: Integer;
   begin
     s := p^[AKind];
@@ -167,13 +172,13 @@ function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): AnsiString;
       if (0<AMaxLen) and (AMaxLen<i) then
         s:=ASubstOnMaxLen;
       if (0<Length(Result)) then
-        if (not (Result[Length(Result)] in [#32,#160])) then
+        if (not CharInSet(Result[Length(Result)], [#32,#160])) then
           Result:=Result+#32;
       Result:=Result+APrefix+s+ASuffix;
     end;
   end;
 
-  function MakePortInfo: AnsiString;
+  function MakePortInfo: string;
   begin
     Result:=p^[guik_DeviceDriverName];
     if (16<Length(Result)) then begin
@@ -188,7 +193,7 @@ function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): AnsiString;
       Result:=Result+': ';
   end;
 
-  function MakeDeviceName: AnsiString;
+  function MakeDeviceName: string;
   begin
     Result:=p^[guik_Model_Description_Full];
     if (0=Length(Result)) then
@@ -201,7 +206,7 @@ function VSAGPS_Generate_GPSUnitInfo(const p: PVSAGPS_UNIT_INFO): AnsiString;
       Result:=p^[guik_Software_Version];
   end;
 
-  function MakeDatum: AnsiString;
+  function MakeDatum: string;
   begin
     Result:=p^[guik_Datum_Name];
     if (0=Length(Result)) then

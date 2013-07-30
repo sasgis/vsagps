@@ -20,7 +20,7 @@ uses
 {$else}
   Classes,
 {$ifend}
-  Dialogs,
+  //Dialogs,
   vsagps_public_base,
   vsagps_public_types,
   vsagps_public_unit_info,
@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  vsagps_memory,
+  vsagps_public_memory,
   vsagps_public_debugstring,
   vsagps_device_usb_garmin,
   vsagps_device_com_nmea,

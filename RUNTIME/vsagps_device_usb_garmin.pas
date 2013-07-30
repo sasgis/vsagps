@@ -15,13 +15,10 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
   vsagps_public_types,
+  vsagps_public_classes,
+  vsagps_public_sysutils,
   vsagps_public_device,
   vsagps_public_garmin,
   vsagps_device_base;
@@ -85,7 +82,7 @@ uses
   vsagps_tools,
   vsagps_ini,
   vsagps_runtime,
-  vsagps_memory,
+  vsagps_public_memory,
   vsagps_public_debugstring,
   vsagps_public_unit_info;
 
@@ -114,7 +111,7 @@ end;
 
 procedure Tvsagps_device_usb_garmin.InternalCreateGarminIniParams(const AProductID, ADeviceInfo: AnsiString);
 var
-  sl: TStringList;
+  VList: TStringListA;
   t: TGarminIniParams;
   VCheckProductID: Boolean;
   VCheckDeviceInfo: Boolean;
@@ -133,18 +130,18 @@ var
     sLine, sTail: AnsiString;
   begin
     // get index of section header
-    Result:=VSAGPS_ini_GetSectionHeader(sl, ASectionNameUppercased, iSectionHeader);
+    Result:=VSAGPS_ini_GetSectionHeader(VList, ASectionNameUppercased, iSectionHeader);
     if Result then begin
       // section found
       Inc(iSectionHeader);
 
       // lookup params
-      while (iSectionHeader<sl.Count) do begin
+      while (iSectionHeader < VList.Count) do begin
         // get line
-        sLine:=sl[iSectionHeader];
+        sLine := VList[iSectionHeader];
 
         // break on next section
-        if SameText(vsagps_ini_sectiona, System.Copy(sLine, 1, Length(vsagps_ini_sectiona))) then
+        if SameTextA(vsagps_ini_sectiona, System.Copy(sLine, 1, Length(vsagps_ini_sectiona))) then
           break;
 
         // check param(s) name(s)
@@ -167,10 +164,10 @@ var
 begin
   InternalKillGarminIniParams;
 
-  sl:=TStringList.Create;
+  VList := TStringListA.Create;
   try
-    VSAGPS_ini_LoadFromFile(sl, vsagps_garmin_ini_filename);
-    if (0<sl.Count) then begin
+    VList.LoadFromFile(vsagps_garmin_ini_filename);
+    if (0 < VList.Count) then begin
       // init
       Zeromemory(@t, sizeof(t));
       VCheckProductID:=FALSE;
@@ -191,7 +188,7 @@ begin
       // get from deviceinfo section (if available and enabled)
       if VCheckDeviceInfo then
       if (0<Length(ADeviceInfo)) then
-      if _ReadSection(AnsiUpperCase(ADeviceInfo), FALSE) then begin
+      if _ReadSection(AnsiUpperCaseA(ADeviceInfo), FALSE) then begin
         New(FGarminIniParams);
         FGarminIniParams^:=t;
         Exit;
@@ -204,7 +201,7 @@ begin
       end;
     end;
   finally
-    sl.Free;
+    VList.Free;
   end;
 end;
 
@@ -239,8 +236,8 @@ begin
     try
       VSAGPS_Autodetect_Get_SetupDi_Devices(@GUID_DEVINTERFACE_GRMNUSB, @dwSize, TRUE, slUSBs);
       if (0<slUSBs.Count) then begin
-        VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
-        FGPSDeviceInfo_NameToConnectInternalA:=VSAGPS_AllocPCharByString(slUSBs[0], TRUE);
+        VSAGPS_FreeAndNil_PAnsiChar(FGPSDeviceInfo_NameToConnectInternalA);
+        FGPSDeviceInfo_NameToConnectInternalA:=VSAGPS_AllocPCharByString(AnsiString(slUSBs[0]), TRUE);
       end;
     finally
       FreeAndNil(slUSBs);
@@ -248,35 +245,36 @@ begin
   end else begin
     // name from user - crazy people (to get name for usb device)!
     // prayed
-    VSAGPS_FreeAndNil_PChar(FGPSDeviceInfo_NameToConnectInternalA);
+    VSAGPS_FreeAndNil_PAnsiChar(FGPSDeviceInfo_NameToConnectInternalA);
     FGPSDeviceInfo_NameToConnectInternalA:=VSAGPS_AllocPCharByString(FDeviceNameByUser, TRUE);
   end;
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Ext_Product_Data(const AData_Size: DWORD; const pData: PExt_Product_Data_Type);
 begin
-  parse_nullstrings_to_strings(AData_Size, @(pData^.product_description), FDeviceInfo, TRUE, FALSE);
+  parse_nullstrings_to_strings(AData_Size, @(pData^.product_description), FDeviceInfo, True);
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Product_Data(const AData_Size: DWORD; const pData: PProduct_Data_Type);
 var
-  VProductID, VDeviceInfo: AnsiString;
+  VProductID: AnsiString;
+  VDeviceInfo: AnsiString;
 begin
-  VDeviceInfo:='';
-  VProductID:=IntToStr(pData^.product_ID);
-  InternalSetUnitInfo(guik_Product_ID, VProductID);
-  InternalSetUnitInfo(guik_Software_Version, IntToStr(pData^.software_version));
+  VDeviceInfo := '';
+  VProductID := IntToStrA(pData^.product_ID);
+  InternalSetUnitInfoA(guik_Product_ID, VProductID);
+  InternalSetUnitInfoA(guik_Software_Version, IntToStrA(pData^.software_version));
 
   // parse and save model (first line from list) - 3 is the size of  starting fields
-  parse_nullstrings_to_strings(AData_Size-3, @(pData^.product_description), FDeviceInfo, TRUE, FALSE);
-  if (nil<>FDeviceInfo) and (0<FDeviceInfo.Count) then begin
-    VDeviceInfo:=FDeviceInfo[0];
-    InternalSetUnitInfo(guik_Model_Description_Full, VDeviceInfo);
+  parse_nullstrings_to_strings(AData_Size-3, @(pData^.product_description), FDeviceInfo, True);
+  if (nil <> FDeviceInfo) and (0 < FDeviceInfo.Count) then begin
+    VDeviceInfo := FDeviceInfo[0];
+    InternalSetUnitInfoA(guik_Model_Description_Full, VDeviceInfo);
     FDeviceInfo.Delete(0);
   end;
 
   // check workarounds and params
-  InternalCreateGarminIniParams(VProductID,VDeviceInfo);
+  InternalCreateGarminIniParams(VProductID, VDeviceInfo);
 end;
 
 procedure Tvsagps_device_usb_garmin.Internal_Parse_Protocol_Array(AData_Size: DWORD; pData: PProtocol_Array_Type);
@@ -289,10 +287,11 @@ begin
   cur:=@(pData^[0]);
   while (AData_Size>0) do begin
     // parse
-    s:=IntToStr(cur^.data);
-    while Length(s)<3 do
-      s:='0'+s;
-    s:=Chr(cur^.tag)+s;
+    s := IntToStrA(cur^.data);
+    while Length(s) < 3 do begin
+      s := '0' + s;
+    end;
+    s := AnsiChar(cur^.tag) + s;
     FSupportedProtocols.Append(s);
     // goto next
     cur:=PProtocol_Data_Type(Pointer(DWORD(Pointer(cur)) + sizeof(Protocol_Data_Type)));

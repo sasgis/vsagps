@@ -119,9 +119,11 @@ function VSAGPS_Create_DOMDocument(var ADOMDocument: IDOMDocument; const ARaiseE
     end;
   end;
 
+{$if defined(VSAGPS_USE_XERCES_XML_IMPORT)}
 var
   VErrorMode: UINT;
   VCanAdjustErrorMode: Boolean;
+{$ifend}
 begin
   Result:=FALSE;
 

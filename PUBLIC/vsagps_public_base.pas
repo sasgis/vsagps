@@ -242,15 +242,18 @@ procedure DecodeCOMDeviceFlags(const AFlags: DWORD; AOptions: PCOMAutodetectOpti
 procedure EncodeCOMDeviceFlags(const AOptions: PCOMAutodetectOptions; out AFlags: DWORD);
 
 // returns number of com port by name (3 for 'COM3')
-function GetCOMPortNumber(const ACOMPortName: AnsiString): SmallInt;
+function GetCOMPortNumber(const ACOMPortName: string): SmallInt;
 
 function GPSStateChangeCorrectly(const old_state, new_state: Tvsagps_GPSState): Boolean;
 
-function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
+function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): string;
 
-function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): AnsiString;
+function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): string;
 
 implementation
+
+uses
+  vsagps_public_sysutils;
 
 function NoData_Float32(const AValue: Float32): Boolean;
 begin
@@ -329,7 +332,7 @@ end;
 
 function Select_PVSAGPS_FIX_SATS_from_ALL(const p: PVSAGPS_FIX_ALL; const ATalkerID: AnsiString): PVSAGPS_FIX_SATS;
 begin
-  if SameText(ATalkerID, nmea_ti_GLONASS) then
+  if SameTextA(ATalkerID, nmea_ti_GLONASS) then
     Result := @(p^.gl)
   else
     Result := @(p^.gp);
@@ -391,13 +394,13 @@ begin
     AFlags := (AFlags or cCOM_src_Others);
 end;
 
-function GetCOMPortNumber(const ACOMPortName: AnsiString): SmallInt;
+function GetCOMPortNumber(const ACOMPortName: string): SmallInt;
 var
-  S: AnsiString;
+  S: string;
   p: Integer;
 begin
   S:=ACOMPortName;
-  while (0<Length(S)) and (not (S[1] in ['0','1'..'9'])) do begin
+  while (0<Length(S)) and (not CharInSet(S[1], ['0','1'..'9'])) do begin
     System.Delete(S,1,1);
   end;
 
@@ -427,11 +430,11 @@ begin
   end;
 end;
 
-function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
+function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): string;
 const
   ISO8601_Decimal_Separator = '.';
 var
-  ms: AnsiString;
+  ms: string;
 begin
   // 2001-11-16T23:03:38Z
   Result:=FormatDateTime('yyyy-mm-dd',ADateTime)+'T'+FormatDateTime('hh:nn:ss',ADateTime);
@@ -446,8 +449,8 @@ begin
   Result:=Result+'Z';
 end;
 
-function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): AnsiString;
-var FFormat: AnsiString;
+function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): string;
+var FFormat: string;
 begin
   FFormat:=cVSAGPS_TimeStampFileNameFormat;
   if bWithMSec then

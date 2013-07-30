@@ -15,12 +15,8 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
+  vsagps_public_classes,
   vsagps_tools;
 
 (*
@@ -365,7 +361,7 @@ function VSAGPS_Autodetect_Get_SetupDi_Devices(const AClassGuid: PGUID;
 implementation
 
 uses
-  vsagps_memory;
+  vsagps_public_memory;
 
 procedure VSAGPS_WorkingThread_InitParams(pParams: PVSAGPS_WorkingThread_Params);
 begin
@@ -590,7 +586,7 @@ begin
               SetString(str_dev_name, PAnsiChar(@(theDevDetailData^.DevicePath)), dwErr);
               //if sl_names.IndexOf(str_dev_name)>=0 then
                 //break;
-              sl_container.Append(str_dev_name);
+              sl_container.Append(string(str_dev_name));
               if AOnlySingleItem then
                 break;
             end else begin

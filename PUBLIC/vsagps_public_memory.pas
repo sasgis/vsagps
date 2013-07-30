@@ -2,7 +2,7 @@
   VSAGPS Library. Copyright (C) 2011, Sergey Vasketsov
   Please read <info_*.txt> file for License details and conditions (GNU GPLv3)
 *)
-unit vsagps_memory;
+unit vsagps_public_memory;
 (*
 *)
 
@@ -22,12 +22,15 @@ function VSAGPS_GetMemZ(const dwBytes: DWORD): Pointer;
 
 procedure VSAGPS_FreeMem(p: Pointer); stdcall;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
+procedure VSAGPS_FreeAndNil_PAnsiChar(var p: PAnsiChar);
 procedure VSAGPS_FreeAndNil_PWideChar(var p: PWideChar);
+procedure VSAGPS_FreeAndNil_PChar(var p: Pointer);
 
-function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar;
+function VSAGPS_AllocPCharByString(const s: AnsiString; const aNILforEmpty: Boolean): PAnsiChar; overload;
+function VSAGPS_AllocPCharByString(const s: WideString; const aNILforEmpty: Boolean): PWideChar; overload;
 
-function VSAGPS_AllocPCharByPChar(const pSrc: PAnsiChar; const aNILforEmpty: Boolean): PAnsiChar;
+function VSAGPS_AllocPCharByPChar(const pSrc: PAnsiChar; const aNILforEmpty: Boolean): PAnsiChar; overload;
+function VSAGPS_AllocPCharByPChar(const pSrc: PWideChar; const aNILforEmpty: Boolean): PWideChar; overload;
 
 // deserialize packet from ansistring
 function VSAGPS_AllocPByteByString(const s: AnsiString; const dwMinSize: DWORD): PByte;
@@ -35,6 +38,9 @@ function VSAGPS_AllocPByteByString(const s: AnsiString; const dwMinSize: DWORD):
 function VSAGPS_AllocPCharByPByte(const pSrc: PByte; const dwLen: DWORD): PAnsiChar;
 
 implementation
+
+uses
+  vsagps_public_sysutils;
 
 function VSAGPS_GetMem(const dwBytes: DWORD): Pointer;
 begin
@@ -52,7 +58,7 @@ begin
     HeapFree(GetProcessHeap, 0, p);
 end;
 
-procedure VSAGPS_FreeAndNil_PChar(var p: PAnsiChar);
+procedure VSAGPS_FreeAndNil_PAnsiChar(var p: PAnsiChar);
 begin
   if (nil<>p) then begin
     VSAGPS_FreeMem(p);
@@ -61,6 +67,14 @@ begin
 end;
 
 procedure VSAGPS_FreeAndNil_PWideChar(var p: PWideChar);
+begin
+  if (nil<>p) then begin
+    VSAGPS_FreeMem(p);
+    p:=nil;
+  end;
+end;
+
+procedure VSAGPS_FreeAndNil_PChar(var p: Pointer);
 begin
   if (nil<>p) then begin
     VSAGPS_FreeMem(p);
@@ -83,6 +97,21 @@ begin
   Result[d]:=#0;
 end;
 
+function VSAGPS_AllocPCharByString(const s: WideString; const aNILforEmpty: Boolean): PWideChar;
+var d: Integer;
+begin
+  Result:=nil;
+  d:=Length(s);
+
+  if aNILforEmpty and (0=d) then
+    Exit;
+
+  Result:=VSAGPS_GetMem((d+1)*SizeOf(s[1]));
+  if (0<d) then
+    CopyMemory(Result, PWideChar(s), d*SizeOf(s[1]));
+  Result[d]:=#0;
+end;
+
 function VSAGPS_AllocPCharByPChar(const pSrc: PAnsiChar; const aNILforEmpty: Boolean): PAnsiChar;
 var d: Integer;
 begin
@@ -96,8 +125,27 @@ begin
   if aNILforEmpty and (0=d) then
     Exit;
 
-  Result:=VSAGPS_GetMem(d+1);
-  CopyMemory(Result, pSrc, d+1);
+  Inc(d);
+  Result:=VSAGPS_GetMem(d);
+  CopyMemory(Result, pSrc, d);
+end;
+
+function VSAGPS_AllocPCharByPChar(const pSrc: PWideChar; const aNILforEmpty: Boolean): PWideChar;
+var d: Integer;
+begin
+  Result:=nil;
+
+  if (nil=pSrc) then
+    Exit;
+
+  d:=StrLenW(pSrc);
+
+  if aNILforEmpty and (0=d) then
+    Exit;
+
+  d := (d+1) * SizeOf(WideChar);
+  Result:=VSAGPS_GetMem(d);
+  CopyMemory(Result, pSrc, d);
 end;
 
 function VSAGPS_AllocPByteByString(const s: AnsiString; const dwMinSize: DWORD): PByte;
@@ -117,7 +165,7 @@ begin
       cur:=Result;
       for i := 0 to siz-1 do begin
         if (i<buf_len) then begin
-          v:=StrToint('0x'+s[2*i+1]+s[2*i+2]);
+          v:=StrToint('0x'+string(s[2*i+1]+s[2*i+2]));
           cur^:=LoByte(LoWord(v));
         end else begin
           cur^:=0;
@@ -143,13 +191,13 @@ begin
     s:='';
     cur:=pSrc;
     for i := 0 to dwLen-1 do begin
-      s:=s+IntToHex(cur^,2);
+      s := s + AnsiString(IntToHex(cur^, 2));
       Inc(cur);
     end;
     s:=s+#13#10;
     Result:=VSAGPS_AllocPCharByString(s, TRUE);
   except
-    VSAGPS_FreeAndNil_PChar(Result);
+    VSAGPS_FreeAndNil_PAnsiChar(Result);
   end;
 end;
 

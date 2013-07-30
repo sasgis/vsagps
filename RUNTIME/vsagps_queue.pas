@@ -14,12 +14,8 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
-  SysUtils;
+  SysUtils,
+  vsagps_public_classes;
 
 type
 {$if not defined(USE_SIMPLE_CLASSES)}
@@ -31,12 +27,7 @@ type
 {$ifend}
 
   // queue for packets
-  Tvsagps_queue = class
-{$if defined(USE_SIMPLE_CLASSES)}
-  (Tvsagps_List)
-{$else}
-  (TList)
-{$ifend}
+  Tvsagps_queue = class(TList)
   private
     FCS: TRTLCriticalSection;
     FDenyAdd: Boolean;
@@ -46,9 +37,6 @@ type
 {$ifend}
   public
     constructor Create;
-{$if defined(USE_SIMPLE_CLASSES)}
-    override;
-{$ifend}
     destructor Destroy; override;
     // empty queue (before free)
     procedure FreeAllPackets;
@@ -62,7 +50,7 @@ implementation
 
 uses
 {$if not defined(USE_SIMPLE_CLASSES)}
-  vsagps_memory,
+  vsagps_public_memory,
 {$ifend}
   vsagps_public_debugstring;
 
@@ -110,9 +98,7 @@ end;
 
 constructor Tvsagps_queue.Create;
 begin
-{$if defined(USE_SIMPLE_CLASSES)}
   inherited Create;
-{$ifend}
   FDenyAdd:=FALSE;
   InitializeCriticalSection(FCS);
 end;

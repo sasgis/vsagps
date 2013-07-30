@@ -15,12 +15,9 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
+  vsagps_public_classes,
+  vsagps_public_sysutils,
   vsagps_public_types;
 
 const
@@ -55,41 +52,37 @@ const
 
 
 // return number of added/inserted lines
-function parse_nullstrings_to_strings(AData_Size: DWORD;
-                                      ABuffer: PAnsiChar;
-                                      AStrings: TStrings;
-                                      const ATrim: Boolean;
-                                      const ASourceIsWide: Boolean): Byte;
-
-
+function parse_nullstrings_to_strings(
+  AData_Size: DWORD;
+  ABuffer: PAnsiChar;
+  const AStrings: TStringsA;
+  const ATrim: Boolean
+): Byte;
 
 function VSAGPS_StringList_To_PCharList(sl: TStrings): PVSAGPS_PCHAR_LIST;
 
 implementation
 
 uses
-  vsagps_memory;
+  vsagps_public_memory;
 
-function parse_nullstrings_to_strings(AData_Size: DWORD;
-                                      ABuffer: PAnsiChar;
-                                      AStrings: TStrings;
-                                      const ATrim: Boolean;
-                                      const ASourceIsWide: Boolean): Byte;
-
-var
-  sym_size: Byte;
+function parse_nullstrings_to_strings(
+  AData_Size: DWORD;
+  ABuffer: PAnsiChar;
+  const AStrings: TStringsA;
+  const ATrim: Boolean
+): Byte;
 
   procedure _Add_to_Obj(var s: AnsiString; var res: Byte);
   begin
     if ATrim and (Length(s)>0) then begin
       //
-      s:=Trim(s);
-      s:=StringReplace(s,#13,'',[rfReplaceAll]);
-      s:=StringReplace(s,#10,'',[rfReplaceAll]);
+      s := TrimA(s);
+      DelCharInSetA(s, [#13,#10]);
     end;
 
     // just append - skip empty lines
-    if (Length(s)>0) then begin
+    if (Length(s) > 0) then begin
       AStrings.Append(s);
     end;
 
@@ -97,43 +90,28 @@ var
   end;
 
 var
-  s: AnsiString;
-  c: AnsiChar;
-  wc: WideChar;
-  bz: Boolean;
+  VLineA: AnsiString;
 begin
-  Result:=0;
-  s:='';
-  // symbol size
-  sym_size:=Ord(ASourceIsWide);
-  Inc(sym_size);
+  Result := 0;
+  VLineA := '';
 
   while (AData_Size>0) do begin
     // parse
-    if (ASourceIsWide) then begin
-      wc:=PWideChar(ABuffer)^;
-      bz:=(#0=wc);
-      if (not bz) then
-        s:=s+wc;
+    if (#0 <> ABuffer^) then begin
+      VLineA := VLineA + ABuffer^;
     end else begin
-      c:=ABuffer^;
-      bz:=(#0=c);
-      if (not bz) then
-        s:=s+c;
-    end;
-    if bz then begin
       // end of single line
-      _Add_to_Obj(s, Result);
-      s:='';
+      _Add_to_Obj(VLineA, Result);
+      VLineA := '';
     end;
 
     // next
-    ABuffer:=PAnsiChar(Pointer(DWORD(Pointer(ABuffer))+sym_size));
-    AData_Size:=AData_Size-sym_size;
+    ABuffer := PAnsiChar(Pointer(DWORD(Pointer(ABuffer)) + SizeOf(AnsiChar)));
+    AData_Size := AData_Size - SizeOf(AnsiChar);
   end;
 
-  if Length(s)>0 then
-    _Add_to_Obj(s, Result);
+  if Length(VLineA)>0 then
+    _Add_to_Obj(VLineA, Result);
 end;
 
 
@@ -189,7 +167,7 @@ begin
       end;
 {$else}
       for i := 0 to sl.Count-1 do begin
-        s:=sl[i];
+        s := AnsiString(sl[i]);
         CopyMemory(pLines, PAnsiChar(s), Length(s));
         pLines[Length(s)]:=#0;
         Result^.szItems[i]:=pLines;

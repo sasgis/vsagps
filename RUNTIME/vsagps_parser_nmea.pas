@@ -15,13 +15,10 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
-  Classes,
-{$ifend}
   vsagps_public_base,
   vsagps_public_types,
+  vsagps_public_classes,
+  vsagps_public_sysutils,
   vsagps_public_nmea,
   vsagps_public_parser,
   vsagps_public_device;
@@ -33,7 +30,7 @@ const
   cNmea_Separator   = ',';
   cNmea_Point       = '.';
   cNmea_Finisher    = '*';
-  cNmea_Tail        = #13#10;  
+  cNmea_Tail        = AnsiString(#13#10);
 
 type
   TNmeaParserProc = function (const AData, ASubCommand: AnsiString): DWORD of object;
@@ -57,7 +54,7 @@ type
 
   TOnApplyUTCDateTimeProc = procedure (const ADate: PNMEA_Date; const ATime: PNMEA_Time) of object;
 
-  TStringListNmea = class(TStringList)
+  TStringListNmea = class(TStringListA)
   private
     FFormatSettings: TFormatSettings;
   private
@@ -163,6 +160,7 @@ procedure NMEA_Parse_Coord(const ACoordValue: AnsiString; const ACoord: PNMEA_Co
 implementation
 
 uses
+  vsagps_public_print,
   vsagps_public_debugstring;
 
 function CalcNmeaChecksum(const ANmeaBaseString: AnsiString): Byte;
@@ -177,8 +175,8 @@ end;
 function MakeNmeaFullString(const ANmeaBaseString: AnsiString): AnsiString;
 var chksum: Byte;
 begin
-  chksum:=CalcNmeaChecksum(ANmeaBaseString);
-  Result:=cNmea_Starter+ANmeaBaseString+cNmea_Finisher+IntToHex(chksum,2)+cNmea_Tail;
+  chksum := CalcNmeaChecksum(ANmeaBaseString);
+  Result := cNmea_Starter + ANmeaBaseString + cNmea_Finisher + IntToHexA(chksum, 2) + cNmea_Tail;
 end;
 
 function MakeNmeaBaseQuerySentence(
@@ -203,7 +201,7 @@ function ExtractNmeaBaseString(const ANmeaFullString: AnsiString;
   function _SameChecksums(const cs1: AnsiString; const cs2: Byte): Boolean;
   var n,m: Integer;
   begin
-    if TryStrToInt('0x'+cs1, n) then begin
+    if TryStrToIntA('0x'+cs1, n) then begin
       m:=cs2;
       Result:=(m=n);
     end else
@@ -225,11 +223,11 @@ begin
 
   // extract nmea starter
   if ACheckNmeaStarter then begin
-    i:=System.Pos(cNmea_Starter, ANmeaBaseString);
+    i := PosA(cNmea_Starter, ANmeaBaseString);
     if (i>1) then
       System.Delete(ANmeaBaseString,1,i-1);
     test_str:=System.Copy(ANmeaBaseString, 1, Length(cNmea_Starter));
-    if (not SameText(test_str, cNmea_Starter)) then
+    if (not SameTextA(test_str, cNmea_Starter)) then
       Exit;
     System.Delete(ANmeaBaseString, 1, Length(cNmea_Starter));
     if (_NoString) then
@@ -248,7 +246,7 @@ begin
     Exit;
 
   // extract nmea-finisher and checksum
-  i:=System.Pos(cNmea_Finisher, ANmeaBaseString);
+  i := PosA(cNmea_Finisher, ANmeaBaseString);
   if (i>0) then begin
     // nmea-finisher found - try to get checksum
     test_str:=System.Copy(ANmeaBaseString, i+Length(cNmea_Finisher), Length(ANmeaBaseString));
@@ -274,7 +272,7 @@ begin
     end;
   end else begin
     // no nmea-finisher (and of course no checksum) - allowed only for proprietary sentences
-    if SameText(System.Copy(ANmeaBaseString, 1, Length(cNmea_Proprietary)), cNmea_Proprietary) then begin
+    if SameTextA(System.Copy(ANmeaBaseString, 1, Length(cNmea_Proprietary)), cNmea_Proprietary) then begin
       AProprietaryWithoutFinisher:=TRUE;
       Result:=TRUE;
     end;
@@ -292,7 +290,7 @@ var
 
   procedure _MinutesToFloat(const s: AnsiString);
   begin
-    ACoord^.min:=StrToFloat(s, fs);
+    ACoord^.min := StrToFloatA(s, fs);
   end;
 begin
   // 04321.0123
@@ -302,7 +300,7 @@ begin
       _SetNoData;
     end else begin
       // with data
-      p:=System.Pos(cNmea_Point,ACoordValue);
+      p := PosA(cNmea_Point, ACoordValue);
       if (p>0) then begin
         // with point
         if (5<=p) then begin
@@ -310,7 +308,7 @@ begin
           g:=System.Copy(ACoordValue,1,p-3);
           // g='043' s='21.0123'
           _MinutesToFloat(System.Copy(ACoordValue, Length(g)+1, Length(ACoordValue)));
-          ACoord^.deg:=StrToInt(g);
+          ACoord^.deg := StrToIntA(g);
         end else begin
           // error
           _SetNoData;
@@ -319,8 +317,8 @@ begin
         // no point - may be only int part
         if (4<=Length(ACoordValue)) then begin
           // simple
-          ACoord^.deg:=StrToInt(ACoordValue[Length(ACoordValue)-3]+ACoordValue[Length(ACoordValue)-2]);
-          ACoord^.min:=StrToInt(ACoordValue[Length(ACoordValue)-1]+ACoordValue[Length(ACoordValue)]);
+          ACoord^.deg := StrToIntA(ACoordValue[Length(ACoordValue)-3]+ACoordValue[Length(ACoordValue)-2]);
+          ACoord^.min := StrToIntA(ACoordValue[Length(ACoordValue)-1]+ACoordValue[Length(ACoordValue)]);
         end else begin
           // error
           _SetNoData;
@@ -383,7 +381,7 @@ var
   Vcommand, Vdata: AnsiString;
   Vtalkerid: AnsiString;
 begin
-  pComma:=System.Pos(cNmea_Separator,ANmeaBaseString);
+  pComma := PosA(cNmea_Separator, ANmeaBaseString);
   if (pComma>0) then begin
     // extract command
     Vcommand:=System.Copy(ANmeaBaseString, 1, pComma-1);
@@ -656,7 +654,7 @@ begin
   Parse_NMEA_TalkerID(ATalkerID, @(h.chTalkerID));
 
   // check talker_id for GNSS (mixed)
-  if SameText(ATalkerID, nmea_ti_GNSS) then begin
+  if SameTextA(ATalkerID, nmea_ti_GNSS) then begin
     // GNGSA - several constellates (contig. GNGSA sent.)
     Inc(FGNGSANmeaCounter);
     // define corrected talker_id after satellites parser (see bellow)
@@ -736,7 +734,7 @@ begin
   h.dwSize:=sizeof(h);
   Parse_NMEA_TalkerID(ATalkerID, @(h.chTalkerID));
 
-  if SameText(ATalkerID, nmea_ti_GLONASS) then begin
+  if SameTextA(ATalkerID, nmea_ti_GLONASS) then begin
     pCounter:=@FGSVNmeaCounterGL;
     pPrevGSV:=@FGSVNmeaPrevGSVGL;
   end else begin
@@ -901,9 +899,9 @@ begin
   if (6=Length(s)) then
   try
     // ok - treat as ddmmyy
-    ADate^.day:=StrToInt(s[1]+s[2]);
-    ADate^.month:=StrToInt(s[3]+s[4]);
-    ADate^.year:=StrToInt(s[5]+s[6]);
+    ADate^.day   := StrToIntA(s[1]+s[2]);
+    ADate^.month := StrToIntA(s[3]+s[4]);
+    ADate^.year  := StrToIntA(s[5]+s[6]);
   except
     _SetNoData;
   end else begin
@@ -936,7 +934,7 @@ begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
   try
-    APtrSatID^:=Prep_TVSAGPS_FIX_SAT(StrToInt(s));
+    APtrSatID^ := Prep_TVSAGPS_FIX_SAT(StrToIntA(s));
   except
     _SetNoData;
   end else begin
@@ -956,7 +954,7 @@ begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
   try
-    ASInt16^:=StrToInt(s);
+    ASInt16^ := StrToIntA(s);
   except
     _SetNoData;
   end else begin
@@ -976,7 +974,7 @@ begin
   s:=Get_NMEAPart_By_Index(AIndex);
   if (0<Length(s)) then
   try
-    ASInt8^:=StrToInt(s);
+    ASInt8^ := StrToIntA(s);
   except
     _SetNoData;
   end else begin
@@ -998,9 +996,9 @@ var
 
   procedure _SetHHMMSS;
   begin
-    ATime^.hour:=StrToInt(s[1]+s[2]);
-    ATime^.min :=StrToInt(s[3]+s[4]);
-    ATime^.sec :=StrToInt(s[5]+s[6]);
+    ATime^.hour := StrToIntA(s[1]+s[2]);
+    ATime^.min  := StrToIntA(s[3]+s[4]);
+    ATime^.sec  := StrToIntA(s[5]+s[6]);
   end;
 begin
   ATime^.msec:=0;
@@ -1012,7 +1010,7 @@ begin
       _SetNoData;
     end else begin
       // data
-      p:=System.Pos(cNmea_Point,s);
+      p:=PosA(cNmea_Point, s);
       if (0<p) then begin
         // has point
         if (7=p) then begin
@@ -1023,7 +1021,7 @@ begin
             // with msec
             while (Length(s)<3) do
               s:=s+'0';
-            ATime^.msec:=StrToInt(s);
+            ATime^.msec := StrToIntA(s);
           end;
         end else begin
           // error
@@ -1102,7 +1100,7 @@ end;
 
 procedure TStringListNmea.InitFormatSettings;
 begin
-  GetLocaleFormatSettings(GetThreadLocale, FFormatSettings);
+  VSAGPS_PrepareFormatSettings(FFormatSettings);
   FFormatSettings.DecimalSeparator:=cNmea_Point;
 end;
 
@@ -1120,7 +1118,7 @@ begin
       _SetNoData;
     end else begin
       // parse string
-      AFloat32^:=StrToFloat(s, FFormatSettings);
+      AFloat32^ := StrToFloatA(s, FFormatSettings);
     end;
   except
     _SetNoData;

@@ -477,13 +477,20 @@ begin
 end;
 
 function Convert_TwoDigitYear_to_FourDigitYear(const ATwoDigitYear: Word): Word;
-var VCenturyBase: Integer;
+var
+  VTwoDigWnd: Word;
+  VCenturyBase: Integer;
 begin
   // see SysUtils.ScanDate
+{$IF CompilerVersion < 23}
+  VTwoDigWnd := TwoDigitYearCenturyWindow;
+{$ELSE}
+  VTwoDigWnd := FormatSettings.TwoDigitYearCenturyWindow;
+{$IFEND}
   Result:=ATwoDigitYear;
-  VCenturyBase := CurrentYear - TwoDigitYearCenturyWindow;
+  VCenturyBase := CurrentYear - VTwoDigWnd;
   Inc(Result, VCenturyBase div 100 * 100);
-  if (TwoDigitYearCenturyWindow > 0) and (Result < VCenturyBase) then
+  if (VTwoDigWnd > 0) and (Result < VCenturyBase) then
     Inc(Result, 100);
 end;
 

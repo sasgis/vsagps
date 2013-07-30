@@ -106,33 +106,21 @@ type
   end;
   PExecuteGPSCmd_WaypointData = ^TExecuteGPSCmd_WaypointData;
 
-procedure InitSingleGPSData(const AData: PSingleGPSData);
-function SingleGPSDataNotEmpty(const AData: PSingleGPSData): Boolean;
-
 implementation
 
 uses
+  vsagps_public_sysutils,
   Math;
-
-procedure InitSingleGPSData(const AData: PSingleGPSData);
-begin
-  AData^.Init;
-end;
-
-function SingleGPSDataNotEmpty(const AData: PSingleGPSData): Boolean;
-begin
-  Result := AData^.NotEmpty;
-end;
 
 { TSingleGPSData }
 
 function TSingleGPSData.GetKMLCoordinate(const fs: TFormatSettings): AnsiString;
 begin
   if Self.PositionOK then begin
-    Result:=FloatToStrF(Self.PositionLon, ffFixed, 18, 14, fs)+','+FloatToStrF(Self.PositionLat, ffFixed, 18, 14, fs);
+    Result:=FloatToStrFixedA(Self.PositionLon, 18, 14, fs)+','+FloatToStrFixedA(Self.PositionLat, 18, 14, fs);
     // altitude
     if not NoData_Float64(Self.Altitude) then begin
-      Result:=Result+','+FloatToStrF(Self.Altitude, ffFixed, 18, 10, fs);
+      Result:=Result+','+FloatToStrFixedA(Self.Altitude, 18, 10, fs);
     end;
   end else begin
     Result:='';

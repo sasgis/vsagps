@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  vsagps_memory;
+  vsagps_public_memory;
 
 { Tvsagps_track_writer }
 
@@ -418,7 +418,7 @@ begin
 
   case AParamType of
     stp_SetLogPathWParam: begin
-      SafeSetWideStringP(FLogPath, AParamData);
+      FLogPath := SafeSetStringP(PWideChar(AParamData));
     end;
     stp_SetLogWriterParam: begin
       FVSAGPS_LOG_WRITER_PARAMS:=AParamData;

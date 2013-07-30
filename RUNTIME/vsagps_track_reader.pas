@@ -51,10 +51,15 @@ type
     procedure Internal_RunForSingleFolder(const ASource: WideString; const ASelfAuxPtr: Pointer);
     procedure Internal_RunForList(const ASource: WideString; const ASelfAuxPtr: Pointer);
     // nmea track parser
-    procedure InternalParseTrackLines(const ASrcFileName: WideString; const ALineParserProc: TVSAGPS_DivideStringToLines_Proc);
+    procedure InternalParseTrackLines(
+      const ASrcFileName: WideString;
+      const ALineParserProc: TVSAGPS_DivideStringToLinesA_Proc
+    );
+    // ONLY for ANSI files!!!
     procedure InternalLineParser_Garmin(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalLineParser_NMEA(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalLineParser_PLT(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
+    // for kml/coordinates
     procedure InternalKMLCoordsParser(const ACoordinate: WideString; const ASelfAuxPtr: Pointer);
     // callback proc for xml parser
     procedure ParseGPX_UserProc(const pPX_options: Pvsagps_XML_ParserOptions;
@@ -85,7 +90,7 @@ implementation
 
 uses
   vsagps_public_sats_info,
-  vsagps_memory,
+  vsagps_public_memory,
   DateUtils;
 
 procedure rTVSAGPS_ParseGPX_UserProc(const pUserObjPointer: Pointer;
@@ -106,7 +111,7 @@ begin
   FForceInfiniteTimeout:=TRUE;
   Fparser_nmea:=nil;
   FCurrentFile:='';
-  SafeSetWideStringP(FOriginalSourceFiles, APtrSourceFiles);
+  FOriginalSourceFiles := SafeSetStringP(APtrSourceFiles);
   VSAGPS_PrepareFormatSettings(FFormatSettings);
 end;
 
@@ -298,28 +303,18 @@ begin
   end;
 end;
 
-procedure Tvsagps_track_reader.InternalParseTrackLines(const ASrcFileName: WideString; const ALineParserProc: TVSAGPS_DivideStringToLines_Proc);
+procedure Tvsagps_track_reader.InternalParseTrackLines(
+  const ASrcFileName: WideString;
+  const ALineParserProc: TVSAGPS_DivideStringToLinesA_Proc
+);
 var
-  h: THandle;
-  iSize: Int64;
   s: AnsiString;
-  dwRead: DWORD;
 begin
-  if VSAGPS_CreateFileW(@h, PWideChar(ASrcFileName), TRUE) then
-  try
-    if VSAGPS_GetFileSize(h, iSize) then
-    if (0=Int64Rec(iSize).Hi) then begin // do not open huge files
-      SetLength(s, Int64Rec(iSize).Lo);
-      if not ReadFile(h, PAnsiChar(s)^, Int64Rec(iSize).Lo, dwRead, nil) then
-        s:='';
-    end;
-  finally
-    CloseHandle(h);
-  end;
+  s := VSAGPS_ReadFileContent(ASrcFileName);
 
-  if (0<Length(s)) then begin
+  if (0 < Length(s)) then begin
     // parse text (divide into lines)
-    VSAGPS_DividePCharToLines(PAnsiChar(s), ALineParserProc, nil, FALSE, @(FWT_Params.bAskToExit));
+    VSAGPS_DividePCharToLines(PAnsiChar(s), ALineParserProc, nil, False, @(FWT_Params.bAskToExit));
   end;
 end;
 
@@ -339,7 +334,7 @@ end;
 
 procedure Tvsagps_track_reader.Internal_RunForList(const ASource: WideString; const ASelfAuxPtr: Pointer);
 begin
-  VSAGPS_DividePWideCharToLines(PWideChar(ASource), Internal_RunForSingleItem, ASelfAuxPtr, FALSE, @(FWT_Params.bAskToExit));
+  VSAGPS_DividePCharToLines(PWideChar(ASource), Internal_RunForSingleItem, ASelfAuxPtr, FALSE, @(FWT_Params.bAskToExit));
 end;
 
 procedure Tvsagps_track_reader.Internal_RunForSingleFile(const ASource: WideString; const ASelfAuxPtr: Pointer);

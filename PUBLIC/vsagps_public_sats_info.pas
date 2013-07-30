@@ -16,6 +16,7 @@ uses
 {$ENDIF}
   SysUtils,
   vsagps_public_base,
+  vsagps_public_sysutils,
   vsagps_public_position;
 
 // convert satellite state info to string
@@ -28,13 +29,13 @@ implementation
 
 function SerializeSingleSatInfo(const bsp: PSingleSatFixibilityData; const ssp: PSingleSatSkyData): AnsiString;
 begin
-  Result := IntToHex(Byte(bsp^.sat_info.svid),2)+
-            IntToHex(Byte(bsp^.sat_info.constellation_flag),2)+
-            IntToHex(Word(bsp^.snr),4)+
-            IntToHex(Byte(bsp^.status),2)+
-            IntToHex(Byte(bsp^.flags),2)+
-            IntToHex(Word(ssp^.elevation),4)+
-            IntToHex(Word(ssp^.azimuth),4);
+  Result := IntToHexA(Byte(bsp^.sat_info.svid),2)+
+            IntToHexA(Byte(bsp^.sat_info.constellation_flag),2)+
+            IntToHexA(Word(bsp^.snr),4)+
+            IntToHexA(Byte(bsp^.status),2)+
+            IntToHexA(Byte(bsp^.flags),2)+
+            IntToHexA(Word(ssp^.elevation),4)+
+            IntToHexA(Word(ssp^.azimuth),4);
 end;
 
 function DeserializeSatsInfo(const pInfo: PWideChar; pFTP: PFullTrackPointData): Boolean;

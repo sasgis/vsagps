@@ -163,16 +163,16 @@ const
 implementation
 
 uses
-  vsagps_memory;
+  vsagps_public_memory;
 
 { Tvsagps_track_saver }
 
 procedure Tvsagps_track_saver.Clear_FExecuteGPSCmd_WaypointData;
 begin
-  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
-  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_cmt);
-  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_desc);
-  VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sym);
+  VSAGPS_FreeAndNil_PAnsiChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
+  VSAGPS_FreeAndNil_PAnsiChar(FExecuteGPSCmd_WaypointData.sz_cmt);
+  VSAGPS_FreeAndNil_PAnsiChar(FExecuteGPSCmd_WaypointData.sz_desc);
+  VSAGPS_FreeAndNil_PAnsiChar(FExecuteGPSCmd_WaypointData.sz_sym);
 end;
 
 function Tvsagps_track_saver.CloseALL: LongBool;
@@ -604,7 +604,7 @@ end;
 
 function Tvsagps_track_saver.InternalGetSasxInternalFileName: AnsiString;
 begin
-  SafeSetStringP(Result, FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
+  Result := SafeSetStringP(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
   if (0<Length(Result)) then
     Result:='<sasx:file_name>'+Result+'</sasx:file_name>'+#13#10;
 end;
@@ -642,7 +642,7 @@ begin
     UsePredefined:=TRUE;
     UseResult:=FALSE;
     if (nil<>AStrResult) then
-      VSAGPS_FreeAndNil_PChar(AStrResult);
+      VSAGPS_FreeAndNil_PAnsiChar(AStrResult);
     if (nil<>WStrResult) then
       VSAGPS_FreeAndNil_PWideChar(WStrResult);
   end;
@@ -687,7 +687,7 @@ function Tvsagps_track_saver.InternalGetTrackParamString(const pATP: Pvsagps_Add
   begin
     if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_Sats_Info) then
     if (nil<>pATP^.szSatsInfo) then begin
-      SafeSetStringP(s, pATP^.szSatsInfo);
+      s := SafeSetStringP(pATP^.szSatsInfo);
       if (0<Length(s)) then
         AParamValue:=AParamValue+'<sasx:sats_info>'+s+'</sasx:sats_info>'+#13#10;
     end;
@@ -712,7 +712,7 @@ begin
 
   // set result string
   if FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS.UseResult then begin
-    SafeSetStringP(AParamValue, FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS.AStrResult);
+    AParamValue := SafeSetStringP(FVSAGPS_LOGGER_GETVALUES_CALLBACK_PARAMS.AStrResult);
     Result:=(0<Length(AParamValue));
   end;
 
@@ -772,7 +772,7 @@ begin
 
           if (nil<>FExecuteGPSCmd_WaypointData.sz_sasx_file_name) then begin
             AParamValue:=AParamValue+InternalGetSasxInternalFileName;
-            VSAGPS_FreeAndNil_PChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
+            VSAGPS_FreeAndNil_PAnsiChar(FExecuteGPSCmd_WaypointData.sz_sasx_file_name);
           end;
         end;
 

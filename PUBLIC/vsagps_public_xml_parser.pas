@@ -1018,6 +1018,16 @@ For more information on this map, visit us online at http://goto.arcgisonline.co
                 Include(pData^.kml_data.fAvail_params, kml_color);
               end;
             end;
+          end else if WideSameText(V_sub_Name, 'bgColor') then begin
+            // bgColor
+            if VSAGPS_Parse_Hex_DWORD(ASubNode, @(pData^.kml_data.fValues.bgColor)) then begin
+              Include(pData^.kml_data.fAvail_params, kml_bgColor);
+            end;
+          end else if WideSameText(V_sub_Name, 'textColor') then begin
+            // textColor
+            if VSAGPS_Parse_Hex_DWORD(ASubNode, @(pData^.kml_data.fValues.textColor)) then begin
+              Include(pData^.kml_data.fAvail_params, kml_textColor);
+            end;
           end else if WideSameText(V_sub_Name, 'width') then begin
             // width
             if VSAGPS_Parse_BYTE(ASubNode, @(pData^.kml_data.fValues.width)) then begin

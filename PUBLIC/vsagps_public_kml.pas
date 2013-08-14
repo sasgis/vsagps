@@ -112,101 +112,101 @@ type
     kml_altitude,
     kml_altitudeMode,
     kml_bgColor,
-    kml_bottomFov,
+    //kml_bottomFov,
     kml_color,
     kml_colorMode,
-    kml_displayMode,
-    kml_east,
+    //kml_displayMode,
+    //kml_east,
     kml_extrude,
     kml_fill,
-    kml_flyToView,
-    kml_gridOrigin,
+    //kml_flyToView,
+    //kml_gridOrigin,
     kml_heading,
     kml_latitude,
-    kml_leftFov,
-    kml_listItemType,
+    //kml_leftFov,
+    //kml_listItemType,
     kml_longitude,
-    kml_maxAltitude,
-    kml_maxFadeExtent,
-    kml_maxHeight,
-    kml_maxLodPixels,
-    kml_maxWidth,
-    kml_minAltitude,
-    kml_minFadeExtent,
-    kml_minLodPixels,
-    kml_near,
-    kml_north,
+    //kml_maxAltitude,
+    //kml_maxFadeExtent,
+    //kml_maxHeight,
+    //kml_maxLodPixels,
+    //kml_maxWidth,
+    //kml_minAltitude,
+    //kml_minFadeExtent,
+    //kml_minLodPixels,
+    //kml_near,
+    //kml_north,
     kml_open,
     kml_outline,
-    kml_range,
-    kml_rightFov,
-    kml_roll,
-    kml_rotation,
+    //kml_range,
+    //kml_rightFov,
+    //kml_roll,
+    //kml_rotation,
     kml_scale_,
-    kml_south,
+    //kml_south,
     kml_tessellate,
     kml_textColor,
     kml_tileSize,
-    kml_tilt,
-    kml_topFov,
+    //kml_tilt,
+    //kml_topFov,
     kml_visibility,
-    kml_west,
+    //kml_west,
     kml_when,
-    kml_width,
-    kml_x,
-    kml_y,
-    kml_z
+    kml_width
+    //kml_x,
+    //kml_y,
+    //kml_z
   );
   Tvsagps_KML_params = set of Tvsagps_KML_param;
 
   Tvsagps_KML_values = packed record
     altitude: Double;
     altitudeMode: Byte; // 0=clampToGround (default!), 1=relativeToGround, 2=absolute
-    bgColor: DWORD; // ff7f1020 for BalloonStyle
-    bottomFov: Double; // for ViewVolume
+    bgColor: DWORD; // ff7f1020 for BalloonStyle // for <PolyStyle><color>
+    //bottomFov: Double; // for ViewVolume
     color: DWORD; // 7fff00ff
     colorMode: Byte; // 0=normal, 1=random for IconStyle,LabelStyle
-    displayMode: Byte; // 0=default, 1=hide for BalloonStyle
-    east: Double; // 15.35832653742206 for LatLonBox
+    //displayMode: Byte; // 0=default, 1=hide for BalloonStyle
+    //east: Double; // 15.35832653742206 for LatLonBox
     extrude: Byte; // 0 or 1
     fill: Byte; // 0 or 1
-    flyToView: Byte; // 0 or 1
-    gridOrigin: Byte; // lowerLeft for ImagePyramid
+    //flyToView: Byte; // 0 or 1
+    //gridOrigin: Byte; // lowerLeft for ImagePyramid
     heading: Double; // -27.70337734057933
     latitude: Double; // 40.01000594412381
-    leftFov: Double; // for ViewVolume
-    listItemType: Byte; // 0=check (default!), 1=radioFolder, 2=checkOffOnly, 3=checkHideChildren
+    //leftFov: Double; // for ViewVolume
+    //listItemType: Byte; // 0=check (default!), 1=radioFolder, 2=checkOffOnly, 3=checkHideChildren
     longitude: Double; // -105.2727379358738
-    maxAltitude: Double;
-    maxFadeExtent: DWORD;
-    maxHeight: DWORD; // for ImagePyramid
-    maxLodPixels: DWORD;
-    maxWidth: DWORD; // for ImagePyramid
-    minAltitude: Double;
-    minFadeExtent: DWORD;
-    minLodPixels: DWORD; // -1 = default value
-    near_: Double; // for ViewVolume
-    north: Double; // 37.91904192681665 for LatLonBox
+    //maxAltitude: Double;
+    //maxFadeExtent: DWORD;
+    //maxHeight: DWORD; // for ImagePyramid
+    //maxLodPixels: DWORD;
+    //maxWidth: DWORD; // for ImagePyramid
+    //minAltitude: Double;
+    //minFadeExtent: DWORD;
+    //minLodPixels: DWORD; // -1 = default value
+    //near_: Double; // for ViewVolume
+    //north: Double; // 37.91904192681665 for LatLonBox
     open: Byte; // 0 or 1
     outline: Byte; // 0 or 1
-    range: Double; // 127.2393107680517
-    rightFov: Double; // for ViewVolume
-    roll: Double;
-    rotation: Double; // -0.1556640799496235 for LatLonBox
-    scale: Double; // 1.1
-    south: Double; // 37.46543388598137 for LatLonBox
+    //range: Double; // 127.2393107680517
+    //rightFov: Double; // for ViewVolume
+    //roll: Double;
+    //rotation: Double; // -0.1556640799496235 for LatLonBox
+    scale: Double; // 1.1  // for <IconStyle><scale> // NOT for <LabelStyle><scale> (see tileSize)
+    //south: Double; // 37.46543388598137 for LatLonBox
     tessellate: Byte; // 0 or 1
-    textColor: DWORD; // ff000000 for BalloonStyle
-    tileSize: DWORD; // for ImagePyramid
-    tilt: Double; // 65.74454495876547
-    topFov: Double; // for ViewVolume
+    textColor: DWORD; // ff000000 for BalloonStyle // for <LabelStyle><color>
+    tileSize: DWORD; // for ImagePyramid  // for <LabelStyle><scale> (double*14)
+    //tilt: Double; // 65.74454495876547
+    //topFov: Double; // for ViewVolume
     visibility: Byte; // 0 or 1
-    west: Double; // 14.60128369746704 for LatLonBox
+    //west: Double; // 14.60128369746704 for LatLonBox
     when: TDateTime; // 2007-01-01T00:00:00Z
     width: Byte; // 4
-    x: Double; // for Scale
-    y: Double; // for Scale
-    z: Double; // for Scale
+    //x: Double; // for Scale
+    //y: Double; // for Scale
+    //z: Double; // for Scale
   end;
   Pvsagps_KML_values = ^Tvsagps_KML_values;
 
@@ -341,11 +341,19 @@ var i: Tvsagps_KML_main_tag;
 begin
   for i := Low(Tvsagps_KML_main_tag) to High(Tvsagps_KML_main_tag) do
   if WideSameText(ATagName, c_KML_main_tag[i]) then begin
-    t:=i;
-    Result:=TRUE;
-    Exit;
+    if (i in [kml_Scale]) then begin
+      if (ATagName = c_KML_main_tag[i]) then begin
+        t := i;
+        Result := True;
+        Exit;
+      end;
+    end else begin
+      t := i;
+      Result := True;
+      Exit;
+    end;
   end;
-  Result:=FALSE;
+  Result := False;
 end;
 
 function KML_subtag_str_type(const ATagName: WideString; var t: Tvsagps_KML_str): Boolean;

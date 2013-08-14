@@ -26,7 +26,7 @@ type
     // keep first
     gpx_gpx,
     // abc order
-    //gpx_extensions,
+    //gpx_extensions, // do not use because of _Get_SubTag_by_Name
     gpx_link,
     gpx_metadata,
     gpx_rte,
@@ -109,26 +109,47 @@ type
 
   // all for metadata
   Tvsagps_GPX_metadata_data = packed record
-  
+
   end;
   Pvsagps_GPX_metadata_data = ^Tvsagps_GPX_metadata_data;
+
+  // gpxx:TrackExtension
+  Tvsagps_GPX_trk_ext = (
+    // gpxx:DisplayColor = xsd:token
+    // Black, DarkRed, DarkGreen, DarkYellow, DarkBlue, DarkMagenta, DarkCyan,
+    // LightGray, DarkGray, Red, Green, Yellow, Blue, Magenta, Cyan, White,
+    // Transparent
+    gpxx_DisplayColor
+  );
+  Tvsagps_GPX_trk_exts = set of Tvsagps_GPX_trk_ext;
+
+  Tvsagps_GPX_wpt_ext = (
+    //gpxx_DisplayMode,
+    gpxx_Depth,
+    gpxx_Temperature
+  );
+  Tvsagps_GPX_wpt_exts = set of Tvsagps_GPX_wpt_ext;
   
   // all for wpt and rtept and trkpt
   Tvsagps_GPX_wpt_data = packed record
     fPos: TSingleGPSData;
     fStrs: array [Tvsagps_GPX_wpt_str] of PWideChar;
+    fExts: array [Tvsagps_GPX_wpt_ext] of PWideChar;
     fSatFixCount: Byte;
     // availability
     fAvail_wpt_params: Tvsagps_GPX_wpt_params;
     fAvail_wpt_strs: Tvsagps_GPX_wpt_strs;
+    fAvail_wpt_exts: Tvsagps_GPX_wpt_exts;
   end;
   Pvsagps_GPX_wpt_data = ^Tvsagps_GPX_wpt_data;
 
   // all for trk and rte
   Tvsagps_GPX_trk_data = packed record
     fStrs: array [Tvsagps_GPX_trk_str] of PWideChar;
+    fExts: array [Tvsagps_GPX_trk_ext] of PWideChar;
     // availability
     fAvail_trk_strs: Tvsagps_GPX_trk_strs;
+    fAvail_trk_exts: Tvsagps_GPX_trk_exts;
   end;
   Pvsagps_GPX_trk_data = ^Tvsagps_GPX_trk_data;
   
@@ -146,6 +167,9 @@ type
     // params
     bParse_wpt_params: WordBool; // for wpt, rtept and trkpt
     bParse_links: WordBool; // links for all tags
+    // garmin extensions (appearance and some data) from gpxx:*Extension
+    bParse_gpxx_appearance: WordBool;
+    bParse_gpxx_extensions: WordBool;
     // aux
     //bCalc_counters: WordBool; // increment counters
   end;
@@ -188,10 +212,20 @@ type
   end;
   Pvsagps_GPX_trk_WideStrings = ^Tvsagps_GPX_trk_WideStrings;
 
+  Tvsagps_GPX_trk_ext_WideStrings = record
+    trk_ext_buffers: array [Tvsagps_GPX_trk_ext] of WideString;
+  end;
+  Pvsagps_GPX_trk_ext_WideStrings = ^Tvsagps_GPX_trk_ext_WideStrings;
+
   Tvsagps_GPX_wpt_WideStrings = record
     wpt_buffers: array [Tvsagps_GPX_wpt_str] of WideString;
   end;
   Pvsagps_GPX_wpt_WideStrings = ^Tvsagps_GPX_wpt_WideStrings;
+
+  Tvsagps_GPX_wpt_ext_WideStrings = record
+    wpt_ext_buffers: array [Tvsagps_GPX_wpt_ext] of WideString;
+  end;
+  Pvsagps_GPX_wpt_ext_WideStrings = ^Tvsagps_GPX_wpt_ext_WideStrings;
 
   Tvsagps_GPX_ext_WideStrings = record
     sasx_buffers: Tvsagps_GPX_sasx_WideStrings;
@@ -200,6 +234,8 @@ type
 
 
 const
+  c_extensions = 'extensions';
+
   c_GPX_main_tag: array [Tvsagps_GPX_main_tag] of WideString =(
     // keep first
     'gpx',
@@ -215,13 +251,50 @@ const
     'wpt'
   );
 
+  c_GPX_trk_subtag: array [Tvsagps_GPX_trk_str] of WideString = (
+    'name',
+    'cmt',
+    'desc',
+    'src',
+    //'link',
+    'number',
+    'type'
+  );
+
+  c_GPX_trk_ext_subtag: array [Tvsagps_GPX_trk_ext] of WideString = (
+    'gpxx:DisplayColor'
+  );
+
+  c_GPX_wpt_str_subtag: array [Tvsagps_GPX_wpt_str] of WideString = (
+    'name',
+    'cmt',
+    'desc',
+    'src',
+    //'link',
+    'sym',
+    'type'
+  );
+
+  c_GPX_wpt_ext_subtag: array [Tvsagps_GPX_wpt_ext] of WideString = (
+    //'gpxx:DisplayMode',
+    'gpxx:Depth',
+    'gpxx:Temperature'
+  );
+
+  c_GPX_ext_sasx_subtag: array [Tvsagps_GPX_ext_sasx_str] of WideString = (
+    'file_name',
+    'sats_info',
+    'src'
+  );
+
 function GPX_get_main_tag_type(const ATagName: WideString; var t: Tvsagps_GPX_main_tag): Boolean;
 
-function GPX_trk_str_subtag(const AName: WideString; var t: Tvsagps_GPX_trk_str): Boolean;
-function GPX_wpt_str_subtag(const AName: WideString; var t: Tvsagps_GPX_wpt_str): Boolean;
+function GPX_trk_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_trk_str): Boolean;
+function GPX_wpt_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_wpt_str): Boolean;
+function GPX_wpt_ext_subtag(const ATagName: WideString; var t: Tvsagps_GPX_wpt_ext): Boolean;
 function GPX_wpt_param_subtag(const AName: WideString; var t: Tvsagps_GPX_wpt_param): Boolean;
 
-function GPX_sasx_str_subtag(const AName: WideString; var t: Tvsagps_GPX_ext_sasx_str): Boolean;
+function GPX_sasx_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_ext_sasx_str): Boolean;
   
 implementation
 
@@ -237,46 +310,40 @@ begin
   Result:=FALSE;
 end;
 
-function GPX_trk_str_subtag(const AName: WideString; var t: Tvsagps_GPX_trk_str): Boolean;
+function GPX_trk_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_trk_str): Boolean;
+var i: Tvsagps_GPX_trk_str;
 begin
-  Result:=TRUE;
-  if WideSameText(AName, 'name') then
-    t:=trk_name
-  else if WideSameText(AName, 'cmt') then
-    t:=trk_cmt
-  else if WideSameText(AName, 'desc') then
-    t:=trk_desc
-  else if WideSameText(AName, 'src') then
-    t:=trk_src
-  //else if WideSameText(AName, 'link') then
-    //t:=trk_link
-  else if WideSameText(AName, 'number') then
-    t:=trk_number
-  else if WideSameText(AName, 'type') then
-    t:=trk_type
-  else
-    Result:=FALSE;
+  for i := Low(Tvsagps_GPX_trk_str) to High(Tvsagps_GPX_trk_str) do
+  if WideSameText(ATagName, c_GPX_trk_subtag[i]) then begin
+    t:=i;
+    Result:=TRUE;
+    Exit;
+  end;
+  Result:=FALSE;
 end;
 
-function GPX_wpt_str_subtag(const AName: WideString; var t: Tvsagps_GPX_wpt_str): Boolean;
+function GPX_wpt_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_wpt_str): Boolean;
+var i: Tvsagps_GPX_wpt_str;
 begin
-  Result:=TRUE;
-  if WideSameText(AName, 'name') then
-    t:=wpt_name
-  else if WideSameText(AName, 'cmt') then
-    t:=wpt_cmt
-  else if WideSameText(AName, 'desc') then
-    t:=wpt_desc
-  else if WideSameText(AName, 'src') then
-    t:=wpt_src
-  //else if WideSameText(AName, 'link') then
-    //t:=wpt_link
-  else if WideSameText(AName, 'sym') then
-    t:=wpt_sym
-  else if WideSameText(AName, 'type') then
-    t:=wpt_type
-  else
-    Result:=FALSE;
+  for i := Low(Tvsagps_GPX_wpt_str) to High(Tvsagps_GPX_wpt_str) do
+  if WideSameText(ATagName, c_GPX_wpt_str_subtag[i]) then begin
+    t:=i;
+    Result:=TRUE;
+    Exit;
+  end;
+  Result:=FALSE;
+end;
+
+function GPX_wpt_ext_subtag(const ATagName: WideString; var t: Tvsagps_GPX_wpt_ext): Boolean;
+var i: Tvsagps_GPX_wpt_ext;
+begin
+  for i := Low(Tvsagps_GPX_wpt_ext) to High(Tvsagps_GPX_wpt_ext) do
+  if WideSameText(ATagName, c_GPX_wpt_ext_subtag[i]) then begin
+    t:=i;
+    Result:=TRUE;
+    Exit;
+  end;
+  Result:=FALSE;
 end;
 
 function GPX_wpt_param_subtag(const AName: WideString; var t: Tvsagps_GPX_wpt_param): Boolean;
@@ -316,17 +383,16 @@ begin
     Result:=FALSE;
 end;
 
-function GPX_sasx_str_subtag(const AName: WideString; var t: Tvsagps_GPX_ext_sasx_str): Boolean;
+function GPX_sasx_str_subtag(const ATagName: WideString; var t: Tvsagps_GPX_ext_sasx_str): Boolean;
+var i: Tvsagps_GPX_ext_sasx_str;
 begin
-  Result:=TRUE;
-  if WideSameText(AName, 'file_name') then
-    t:=sasx_file_name
-  else if WideSameText(AName, 'sats_info') then
-    t:=sasx_sats_info
-  else if WideSameText(AName, 'src') then
-    t:=sasx_src
-  else
-    Result:=FALSE;
+  for i := Low(Tvsagps_GPX_ext_sasx_str) to High(Tvsagps_GPX_ext_sasx_str) do
+  if WideSameText(ATagName, c_GPX_ext_sasx_subtag[i]) then begin
+    t:=i;
+    Result:=TRUE;
+    Exit;
+  end;
+  Result:=FALSE;
 end;
 
 end.

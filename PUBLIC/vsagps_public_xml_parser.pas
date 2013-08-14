@@ -122,7 +122,9 @@ type
   Tvsagps_XML_WideStrings = record
 {$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
     p_gpx_trk_str: Pvsagps_GPX_trk_WideStrings;
+    p_gpx_trk_ext_str: Pvsagps_GPX_trk_ext_WideStrings;
     p_gpx_wpt_str: Pvsagps_GPX_wpt_WideStrings;
+    p_gpx_wpt_ext_str: Pvsagps_GPX_wpt_ext_WideStrings;
     p_gpx_ext_str: Pvsagps_GPX_ext_WideStrings;
 {$ifend}
 {$if defined(VSAGPS_ALLOW_IMPORT_KML)}
@@ -179,6 +181,11 @@ function VSAGPS_LoadAndParseXML(const pUserObjPointer: Pointer;
                                 const AFS: TFormatSettings): Boolean;
 {$ifend}
 
+procedure VSAGPS_KML_ShiftParam(
+  const pPX_Result: Pvsagps_XML_ParserResult;
+  const AParam: Tvsagps_KML_param
+);
+
 implementation
 
 uses
@@ -187,6 +194,48 @@ uses
   ActiveX,
 {$ifend}
   DateUtils;
+
+procedure VSAGPS_KML_ShiftParam(
+  const pPX_Result: Pvsagps_XML_ParserResult;
+  const AParam: Tvsagps_KML_param
+);
+var
+  VPrev: Pvsagps_XML_ParserResult;
+begin
+  // check if available
+  if (not (AParam in pPX_Result^.kml_data.fAvail_params)) then
+    Exit;
+
+  // check if has parent
+  VPrev := pPX_Result^.prev_data;
+  Assert(VPrev <> nil);
+
+  // copy value and set available flag
+  case AParam of
+    kml_bgColor: begin
+      VPrev^.kml_data.fValues.bgColor := pPX_Result^.kml_data.fValues.bgColor;
+    end;
+    kml_color: begin
+      VPrev^.kml_data.fValues.color := pPX_Result^.kml_data.fValues.color;
+    end;
+    kml_fill: begin
+      VPrev^.kml_data.fValues.fill := pPX_Result^.kml_data.fValues.fill;
+    end;
+    kml_scale_: begin
+      VPrev^.kml_data.fValues.scale := pPX_Result^.kml_data.fValues.scale;
+    end;
+    kml_textColor: begin
+      VPrev^.kml_data.fValues.textColor := pPX_Result^.kml_data.fValues.textColor;
+    end;
+    kml_tileSize: begin
+      VPrev^.kml_data.fValues.tileSize := pPX_Result^.kml_data.fValues.tileSize;
+    end;
+    kml_width: begin
+      VPrev^.kml_data.fValues.width := pPX_Result^.kml_data.fValues.width;
+    end;
+  end;
+  Include(VPrev^.kml_data.fAvail_params, AParam);
+end;
 
 function VSAGPS_Parse_Fix(const src: WideString;
                           const p: PSingleDGPSData): Boolean;
@@ -254,7 +303,8 @@ function VSAGPS_Parse_Attrib_Double(
   const ADOMNode: IDOMNode;
   const AName: WideString;
   var dbl: Double;
-  const fs: TFormatSettings): Boolean;
+  const fs: TFormatSettings
+): Boolean;
 var
   nm: IDOMNamedNodeMap;
   mm: IDOMNode;
@@ -273,6 +323,95 @@ begin
 
   // to double
   Result:=VSAGPS_WideString_to_Double(ws, dbl, fs);
+end;
+{$ifend}
+
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
+function VSAGPS_Parse_Double(
+  const ADOMNode: IDOMNode;
+  var AValue: Double;
+  const fs: TFormatSettings
+): Boolean;
+var
+  VValue: WideString;
+  VResult: Double;
+begin
+  Result := False;
+  VValue := VSAGPS_XML_DOMNodeValue(ADOMNode);
+  if (0 = Length(VValue)) then
+    Exit;
+  if VSAGPS_WideString_to_Double(VValue, VResult, fs) then begin
+    Inc(Result);
+    AValue := VResult;
+  end;
+end;
+
+function VSAGPS_Parse_Hex_DWORD(
+  const ADOMNode: IDOMNode;
+  const ABuffer: PDWORD
+): Boolean;
+var
+  VValue: WideString;
+  VText: string;
+  VResult: Integer;
+begin
+  Result := False;
+  VValue := VSAGPS_XML_DOMNodeValue(ADOMNode);
+  if (0 = Length(VValue)) then
+    Exit;
+  VText := '0x' + string(VValue);
+  if TryStrToInt(VText, VResult) then begin
+    Inc(Result);
+    if (ABuffer <> nil) then begin
+      ABuffer^ := DWORD(VResult);
+    end;
+  end;
+end;
+
+function VSAGPS_Parse_BYTE(
+  const ADOMNode: IDOMNode;
+  const ABuffer: PByte
+): Boolean;
+var
+  VValue: WideString;
+  VText: string;
+  VResult: Integer;
+begin
+  Result := False;
+  VValue := VSAGPS_XML_DOMNodeValue(ADOMNode);
+  if (0 = Length(VValue)) then
+    Exit;
+  VText := string(VValue);
+  if TryStrToInt(VText, VResult) then
+  if (VResult >= 0) and (VResult <= $FF) then begin
+    Inc(Result);
+    if (ABuffer <> nil) then begin
+      ABuffer^ := LoByte(VResult);
+    end;
+  end;
+end;
+{$ifend}
+
+{$if defined(VSAGPS_USE_SOME_KIND_OF_XML_IMPORT)}
+function VSAGPS_Parse_Scale14(
+  const ADOMNode: IDOMNode;
+  const ABuffer: PDWORD;
+  const fs: TFormatSettings 
+): Boolean;
+var
+  VValue: WideString;
+  VResult: Double;
+begin
+  Result := False;
+  VValue := VSAGPS_XML_DOMNodeValue(ADOMNode);
+  if (0 = Length(VValue)) then
+    Exit;
+  if VSAGPS_WideString_to_Double(VValue, VResult, fs) then begin
+    Inc(Result);
+    if (ABuffer <> nil) then begin
+      ABuffer^ := Round(VResult*14);
+    end;
+  end;
 end;
 {$ifend}
 
@@ -459,7 +598,8 @@ var
 
   function _Get_SubTag_by_Name(
     const ASubDOMNode: IDOMNode;
-    const pData: Pvsagps_XML_ParserResult): Boolean;
+    const pData: Pvsagps_XML_ParserResult
+  ): Boolean;
   begin
     case V_px_state.src_fmt of
 {$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
@@ -492,7 +632,7 @@ var
   end;
 
 {$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
-  procedure _Parse_GPX_extensions(
+  procedure _Parse_GPX_WPT_SASX(
     const AExtDOMNode: IDOMNode;
     const pExtData: Pvsagps_GPX_ext_sasx_data;
     const pParentData: Pvsagps_XML_ParserResult;
@@ -505,76 +645,161 @@ var
   begin
     if (nil=pParentData) then
       Exit;
-    try
-      bForPoint:=(pParentData^.gpx_data.current_tag in [gpx_rtept,gpx_trkpt,gpx_wpt]);
 
-      // list of subtags
-      V_sub:=AExtDOMNode.firstChild;
+    bForPoint:=(pParentData^.gpx_data.current_tag in [gpx_rtept,gpx_trkpt,gpx_wpt]);
 
-      // for each
-      while Assigned(V_sub) do begin
-        // check exit
-        if _CheckAborted then
-          Exit;
+    // list of subtags
+    V_sub:=AExtDOMNode.firstChild;
 
-        // get
-        V_extName:=V_sub.nodeName;
-        V_extValue:=VSAGPS_XML_DOMNodeValue(V_sub);
+    // for each
+    while Assigned(V_sub) do begin
+      // check exit
+      if _CheckAborted then
+        Exit;
 
-        // parse tag - switch for sasx
-        if WideSameText(System.Copy(V_extName,1,5), 'sasx:') then begin
-          System.Delete(V_extName,1,5);
-          if WideSameText(V_extName, 'timeshift') then begin
-            // sasx:timeshift
-            if VSAGPS_WideString_To_Double(V_extValue, pExtData^.sasx_timeshift, AFS) then
-              Include(pExtData^.fAvail_params, sasx_timeshift);
-            // end of sasx:timeshift
-          end else if WideSameText(V_extName, 'systemtime') then begin
-            // sasx:systemtime
-            if VSAGPS_WideString_to_ISO8601_Time(V_extValue, @(pExtData^.sasx_systemtime)) then
-              Include(pExtData^.fAvail_params, sasx_systemtime);
-            // end of sasx:systemtime
-          end else if WideSameText(V_extName, 'localtime') then begin
-            // sasx:localtime
-            if VSAGPS_WideString_to_ISO8601_Time(V_extValue, @(pExtData^.sasx_localtime)) then
-              Include(pExtData^.fAvail_params, sasx_localtime);
-            // end of sasx:localtime
-          end else if WideSameText(V_extName, 'course') then begin
-            // sasx:course
-            if bForPoint then
-              VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.Heading, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_course);
-            // nothing for trk
-            // end of sasx:course
-          end else if WideSameText(V_extName, 'speed_kmh') then begin
-            // sasx:speed_kmh
-            if bForPoint then
-              VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.Speed_KMH, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_speed);
-            // nothing for trk
-            // end of sasx:speed_kmh
-          end else if WideSameText(V_extName, 'vspeed_ms') then begin
-            // sasx:vspeed_ms
-            if bForPoint then begin
-              VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.VSpeed_MS, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_vspeed_ms);
-              if (wpt_vspeed_ms in pParentData^.gpx_data.wpt_data.fAvail_wpt_params) then
-                pParentData^.gpx_data.wpt_data.fPos.VSpeedOK:=TRUE;
-            end;
-            // nothing for trk
-            // end of sasx:vspeed_ms
-          end else if GPX_sasx_str_subtag(V_extName, tt_sasx) then begin
-            // sasx:src or sasx:file_name
-            if (nil=piWideStrings^.p_gpx_ext_str) then
-              New(piWideStrings^.p_gpx_ext_str);
-            piWideStrings^.p_gpx_ext_str^.sasx_buffers[tt_sasx]:=V_extValue;
-            pExtData^.sasx_strs[tt_sasx]:=PWideChar(piWideStrings^.p_gpx_ext_str^.sasx_buffers[tt_sasx]);
-            Include(pExtData^.fAvail_strs, tt_sasx);
+      // get
+      V_extName:=V_sub.nodeName;
+      V_extValue:=VSAGPS_XML_DOMNodeValue(V_sub);
+
+      // parse tag - switch for sasx
+      if WideSameText(System.Copy(V_extName,1,5), 'sasx:') then begin
+        System.Delete(V_extName,1,5);
+        if WideSameText(V_extName, 'timeshift') then begin
+          // sasx:timeshift
+          if VSAGPS_WideString_To_Double(V_extValue, pExtData^.sasx_timeshift, AFS) then
+            Include(pExtData^.fAvail_params, sasx_timeshift);
+          // end of sasx:timeshift
+        end else if WideSameText(V_extName, 'systemtime') then begin
+          // sasx:systemtime
+          if VSAGPS_WideString_to_ISO8601_Time(V_extValue, @(pExtData^.sasx_systemtime)) then
+            Include(pExtData^.fAvail_params, sasx_systemtime);
+          // end of sasx:systemtime
+        end else if WideSameText(V_extName, 'localtime') then begin
+          // sasx:localtime
+          if VSAGPS_WideString_to_ISO8601_Time(V_extValue, @(pExtData^.sasx_localtime)) then
+            Include(pExtData^.fAvail_params, sasx_localtime);
+          // end of sasx:localtime
+        end else if WideSameText(V_extName, 'course') then begin
+          // sasx:course
+          if bForPoint then
+            VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.Heading, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_course);
+          // nothing for trk
+          // end of sasx:course
+        end else if WideSameText(V_extName, 'speed_kmh') then begin
+          // sasx:speed_kmh
+          if bForPoint then
+            VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.Speed_KMH, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_speed);
+          // nothing for trk
+          // end of sasx:speed_kmh
+        end else if WideSameText(V_extName, 'vspeed_ms') then begin
+          // sasx:vspeed_ms
+          if bForPoint then begin
+            VSAGPS_ParseGPX_wpt_double(V_extValue, pParentData^.gpx_data.wpt_data.fPos.VSpeed_MS, pParentData^.gpx_data.wpt_data.fAvail_wpt_params, wpt_vspeed_ms);
+            if (wpt_vspeed_ms in pParentData^.gpx_data.wpt_data.fAvail_wpt_params) then
+              pParentData^.gpx_data.wpt_data.fPos.VSpeedOK:=TRUE;
           end;
+          // nothing for trk
+          // end of sasx:vspeed_ms
+        end else if GPX_sasx_str_subtag(V_extName, tt_sasx) then begin
+          // sasx:src or sasx:file_name
+          if (nil=piWideStrings^.p_gpx_ext_str) then
+            New(piWideStrings^.p_gpx_ext_str);
+          piWideStrings^.p_gpx_ext_str^.sasx_buffers[tt_sasx]:=V_extValue;
+          pExtData^.sasx_strs[tt_sasx]:=PWideChar(piWideStrings^.p_gpx_ext_str^.sasx_buffers[tt_sasx]);
+          Include(pExtData^.fAvail_strs, tt_sasx);
         end;
-
-        // next
-        V_sub:=V_sub.nextSibling;
       end;
-    finally
-      V_sub:=nil;
+
+      // next
+      V_sub:=V_sub.nextSibling;
+    end;
+  end;
+{$ifend}
+
+{$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
+  procedure _Parse_gpxx_TrackExtension(
+    const AExtDOMNode: IDOMNode;
+    const pTrkData: Pvsagps_GPX_trk_data;
+    const pData: Pvsagps_XML_ParserResult;
+    const piWideStrings: Pvsagps_XML_WideStrings);
+  var
+    V_sub: IDOMNode;
+    V_extName: WideString;
+    //V_extValue: WideString;
+  begin
+    if (nil = pData) then
+      Exit;
+
+    // list of subtags
+    V_sub := AExtDOMNode.firstChild;
+
+    // for each
+    while Assigned(V_sub) do begin
+      // check exit
+      if _CheckAborted then
+        Exit;
+
+      // get
+      V_extName := V_sub.nodeName;
+
+      // parse tag - switch for gpxx:TrackExtension subnodes
+      if WideSameText(V_extName, c_GPX_trk_ext_subtag[gpxx_DisplayColor]) then begin
+        // NOTE: single tag only
+        if (nil=piWideStrings^.p_gpx_trk_ext_str) then
+          New(piWideStrings^.p_gpx_trk_ext_str);
+
+        piWideStrings^.p_gpx_trk_ext_str^.trk_ext_buffers[gpxx_DisplayColor] := VSAGPS_XML_DOMNodeValue(V_sub);
+        pData^.gpx_data.trk_data.fExts[gpxx_DisplayColor] := PWideChar(piWideStrings^.p_gpx_trk_ext_str^.trk_ext_buffers[gpxx_DisplayColor]);
+        Include(pData^.gpx_data.trk_data.fAvail_trk_exts, gpxx_DisplayColor);
+      end;
+
+      // next
+      V_sub := V_sub.nextSibling;
+    end;
+  end;
+{$ifend}
+
+{$if defined(VSAGPS_ALLOW_IMPORT_GPX)}
+  procedure _Parse_GPX_TRK_extensions(
+    const AExtDOMNode: IDOMNode;
+    const pTrkData: Pvsagps_GPX_trk_data;
+    const pData: Pvsagps_XML_ParserResult;
+    const piWideStrings: Pvsagps_XML_WideStrings);
+  var
+    V_sub: IDOMNode;
+    V_extName: WideString;
+    //V_extValue: WideString;
+  begin
+    if (nil = pData) then
+      Exit;
+
+    // list of subtags
+    V_sub := AExtDOMNode.firstChild;
+
+    // for each
+    while Assigned(V_sub) do begin
+      // check exit
+      if _CheckAborted then
+        Exit;
+
+      // get
+      V_extName := V_sub.nodeName;
+      //V_extValue := VSAGPS_XML_DOMNodeValue(V_sub);
+
+      // parse tag - switch for extensions subnodes
+      if WideSameText(V_extName, 'gpxx:TrackExtension') then begin
+        if pPX_Options^.gpx_options.bParse_gpxx_appearance then begin
+          _Parse_gpxx_TrackExtension(
+            V_sub,
+            pTrkData,
+            pData,
+            piWideStrings
+          );
+        end;
+      end;
+
+      // next
+      V_sub := V_sub.nextSibling;
     end;
   end;
 {$ifend}
@@ -612,6 +837,16 @@ var
             piWideStrings^.p_gpx_trk_str^.trk_buffers[V_gpx_trk_str]:=VSAGPS_XML_DOMNodeValue(ASubNode);
             pData^.gpx_data.trk_data.fStrs[V_gpx_trk_str]:=PWideChar(piWideStrings^.p_gpx_trk_str^.trk_buffers[V_gpx_trk_str]);
             Include(pData^.gpx_data.trk_data.fAvail_trk_strs, V_gpx_trk_str);
+          end else if WideSameText(V_sub_Name, c_extensions) then begin
+            // extensions
+            if pPX_Options^.gpx_options.bParse_trk_extensions then begin
+              _Parse_GPX_TRK_extensions(
+                ASubNode,
+                @(pData^.gpx_data.trk_data),
+                pData, //^.prev_data,
+                piWideStrings
+              );
+            end;
           end else begin
             // others (params) - empty
           end;
@@ -623,11 +858,11 @@ var
             // simple subtags and extensions
             if (wpt_extensions=V_gpx_wpt_param) then begin
               // extensions
-              _Parse_GPX_extensions(ASubNode,
-                                    @(pData^.gpx_data.extensions_data),
-                                    // add some values to parent (for points)
-                                    pData, //^.prev_data,
-                                    piWideStrings);
+              _Parse_GPX_WPT_SASX(ASubNode,
+                                  @(pData^.gpx_data.extensions_data),
+                                  // add some values to parent (for points)
+                                  pData, //^.prev_data,
+                                  piWideStrings);
             end else begin
               // simple tags
               V_sub_Value:=VSAGPS_XML_DOMNodeValue(ASubNode);
@@ -765,6 +1000,45 @@ For more information on this map, visit us online at http://goto.arcgisonline.co
             piWideStrings^.p_kml_params_str^.kml_params_buffers[V_kml_str]:=VSAGPS_XML_DOMNodeValue(ASubNode);
             pData^.kml_data.fParamsStrs[V_kml_str]:=PWideChar(piWideStrings^.p_kml_params_str^.kml_params_buffers[V_kml_str]);
             Include(pData^.kml_data.fAvail_strs, V_kml_str);
+          end else if WideSameText(V_sub_Name, 'color') then begin
+            // color
+            if (pData^.kml_data.current_tag = kml_PolyStyle) then begin
+              // background color for polygon
+              if VSAGPS_Parse_Hex_DWORD(ASubNode, @(pData^.kml_data.fValues.bgColor)) then begin
+                Include(pData^.kml_data.fAvail_params, kml_bgColor);
+              end;
+            end else if (pData^.kml_data.current_tag = kml_LabelStyle) then begin
+              // text color for POI
+              if VSAGPS_Parse_Hex_DWORD(ASubNode, @(pData^.kml_data.fValues.textColor)) then begin
+                Include(pData^.kml_data.fAvail_params, kml_textColor);
+              end;
+            end else begin
+              // line color
+              if VSAGPS_Parse_Hex_DWORD(ASubNode, @(pData^.kml_data.fValues.color)) then begin
+                Include(pData^.kml_data.fAvail_params, kml_color);
+              end;
+            end;
+          end else if WideSameText(V_sub_Name, 'width') then begin
+            // width
+            if VSAGPS_Parse_BYTE(ASubNode, @(pData^.kml_data.fValues.width)) then begin
+              Include(pData^.kml_data.fAvail_params, kml_width);
+            end;
+          end else if WideSameText(V_sub_Name, 'fill') then begin
+            // fill
+            if VSAGPS_Parse_BYTE(ASubNode, @(pData^.kml_data.fValues.fill)) then begin
+              Include(pData^.kml_data.fAvail_params, kml_fill);
+            end;
+          end else if WideSameText(V_sub_Name, 'scale') then begin
+            // scale
+            if (pData^.kml_data.current_tag = kml_LabelStyle) then begin
+              if VSAGPS_Parse_Scale14(ASubNode, @(pData^.kml_data.fValues.tileSize), AFS) then begin
+                Include(pData^.kml_data.fAvail_params, kml_tileSize);
+              end;
+            end else begin
+              if VSAGPS_Parse_Double(ASubNode, pData^.kml_data.fValues.scale, AFS) then begin
+                Include(pData^.kml_data.fAvail_params, kml_scale_);
+              end;
+            end;
           end else begin
             // others (params) - empty
           end;
@@ -880,7 +1154,6 @@ For more information on this map, visit us online at http://goto.arcgisonline.co
               // work with subtag
               if (_Get_SubTag_by_Name(Vfch, @V_px_data)) then begin
                 // main tag - full implementation
-
                 // call user
                 _CallUser(@V_px_data, xtd_BeforeSub);
                 try
@@ -893,7 +1166,6 @@ For more information on this map, visit us online at http://goto.arcgisonline.co
                   if V_px_state.skip_sub then
                     V_px_state.skip_sub:=FALSE;
                 end;
-                
                 // end of subtag user calls
               end else begin
                 // some special (sub)tags - just fetch values to buffers
@@ -919,8 +1191,12 @@ For more information on this map, visit us online at http://goto.arcgisonline.co
         Dispose(V_ws.p_gpx_ext_str);
       if (nil<>V_ws.p_gpx_trk_str) then
         Dispose(V_ws.p_gpx_trk_str);
+      if (nil<>V_ws.p_gpx_trk_ext_str) then
+        Dispose(V_ws.p_gpx_trk_ext_str);
       if (nil<>V_ws.p_gpx_wpt_str) then
         Dispose(V_ws.p_gpx_wpt_str);
+      if (nil<>V_ws.p_gpx_wpt_ext_str) then
+        Dispose(V_ws.p_gpx_wpt_ext_str);
 {$ifend}
 {$if defined(VSAGPS_ALLOW_IMPORT_KML)}
       if (nil<>V_ws.p_kml_params_str) then

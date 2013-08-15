@@ -247,6 +247,7 @@ function GetCOMPortNumber(const ACOMPortName: string): SmallInt;
 function GPSStateChangeCorrectly(const old_state, new_state: Tvsagps_GPSState): Boolean;
 
 function DateTime_To_ISO8601(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): string;
+function DateTime_To_ISO8601A(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
 
 function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): string;
 
@@ -447,6 +448,11 @@ begin
       Result:=Result+ISO8601_Decimal_Separator+ms;
   end;
   Result:=Result+'Z';
+end;
+
+function DateTime_To_ISO8601A(const ADateTime: TDateTime; const AWithMilliseconds: Boolean): AnsiString;
+begin
+  Result := AnsiString(DateTime_To_ISO8601(ADateTime, AWithMilliseconds));
 end;
 
 function VSAGPS_TimeStampFileNameFormat_FromNow(const bWithMSec: Boolean): string;

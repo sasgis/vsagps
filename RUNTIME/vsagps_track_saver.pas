@@ -86,6 +86,19 @@ type
                                                      const SDelimiter, STail: AnsiString;
                                                      var AResult: AnsiString);
 
+  private
+    procedure AddRoundFloat32(
+      var AResult: AnsiString;
+      const AValue: Single;
+      const ARound: ShortInt;
+      const ATagName: AnsiString
+    );
+    procedure AddRoundFloat64(
+      var AResult: AnsiString;
+      const AValue: Double;
+      const ARound: ShortInt;
+      const ATagName: AnsiString
+    );
   protected
     // add PAnsiChar to log
     procedure InternalLogBuffer(const ATrackType: TVSAGPS_TrackType;
@@ -259,23 +272,23 @@ begin
   with pATP^.pPos^ do
   case ATrackType of
     ttPLT: begin
-      sRes:=Round_Float64_to_String(PositionLat, FFormatSettings, round_posn)+','+
-            Round_Float64_to_String(PositionLon, FFormatSettings, round_posn)+','+
-            IntToStr(Ord(bNewSeg))+',';
+      sRes := Round_Float64_to_StringA(PositionLat, FFormatSettings, round_posn) + ',' +
+              Round_Float64_to_StringA(PositionLon, FFormatSettings, round_posn) + ',' +
+              IntToStrA(Ord(bNewSeg)) + ',';
 
       if (NoData_Float64(Altitude)) then
-        sRes:=sRes+IntToStr(cPLT_no_Altitude)
+        sRes := sRes + IntToStrA(cPLT_no_Altitude)
       else
-        sRes:=sRes+Round_Float64_to_String(Altitude*cFromMetersToFeet, FFormatSettings, round_ele);
+        sRes := sRes + Round_Float64_to_StringA(Altitude*cFromMetersToFeet, FFormatSettings, round_ele);
 
-      sRes:=sRes+','+
-            FloatToStr(UTCDate+UTCTime, FFormatSettings)+','+
-            DateToStr(UTCDate, FFormatSettings)+','+
-            TimeToStr(UTCTime, FFormatSettings)+#13#10;
+      sRes := sRes + ',' +
+            FloatToStrA(UTCDate+UTCTime, FFormatSettings) + ',' +
+            DateToStrA(UTCDate, FFormatSettings) + ',' +
+            TimeToStrA(UTCTime, FFormatSettings) + #13#10;
     end;
 
     ttGPX: begin
-      sRes:=InternalMakeGpxPointText(pATP, tpTrkptName, 'trkpt', TRUE);
+      sRes := InternalMakeGpxPointText(pATP, tpTrkptName, 'trkpt', TRUE);
     end;
   end;
 
@@ -343,6 +356,34 @@ begin
     end;
   finally
     UnlockCS;
+  end;
+end;
+
+procedure Tvsagps_track_saver.AddRoundFloat32(
+  var AResult: AnsiString;
+  const AValue: Single;
+  const ARound: ShortInt;
+  const ATagName: AnsiString
+);
+begin
+  if (not NoData_Float32(AValue)) then begin
+    AResult := AResult + '<' + ATagName + '>' +
+               Round_Float32_to_StringA(AValue, FFormatSettings, ARound) +
+               '</' + ATagName + '>' + #13#10;
+  end;
+end;
+
+procedure Tvsagps_track_saver.AddRoundFloat64(
+  var AResult: AnsiString;
+  const AValue: Double;
+  const ARound: ShortInt;
+  const ATagName: AnsiString
+);
+begin
+  if (not NoData_Float64(AValue)) then begin
+    AResult := AResult + '<' + ATagName + '>' +
+               Round_Float64_to_StringA(AValue, FFormatSettings, ARound) +
+               '</' + ATagName + '>' + #13#10;
   end;
 end;
 
@@ -443,7 +484,7 @@ begin
 
         // number
         Inc(FTTP_SegmentCounter[ATrackType]);
-        ss := ss + '<number>'+IntToStr(FTTP_SegmentCounter[ATrackType])+'</number>'+#13#10;
+        ss := ss + '<number>' + IntToStrA(FTTP_SegmentCounter[ATrackType]) + '</number>' + #13#10;
 
         // type
         InternalRunCallback(pATP, ss, tpTrkType, 'type');
@@ -514,10 +555,11 @@ begin
     case ATrackType of
       ttPLT: begin
         // local time
-        ss := DateTimeToStr(Now);
+        ss := AnsiString(DateTimeToStr(Now));
         // no commas allowed
-        if System.Pos(',', ss)>0 then
-          ss := StringReplace(ss, ',', '_',[rfReplaceAll]);
+        if (PosA(',', ss) > 0) then begin
+          StringReplaceSingleCharA(ss, ',', '_');
+        end;
 
         ss := 'OziExplorer Track Point File Version 2.1'+#13#10+
               'WGS 84'+#13#10+
@@ -583,7 +625,7 @@ begin
         InternalRunCallback(pATP, ss, tpMetaLink, '');
 
         // time
-        ss := ss + '<time>'+DateTime_To_ISO8601(Now,FALSE)+'</time>'+#13#10;
+        ss := ss + '<time>' + DateTime_To_ISO8601A(Now,FALSE)+'</time>'+#13#10;
 
         // keywords
         InternalRunCallback(pATP, ss, tpMetaKeywords, 'keywords');
@@ -624,15 +666,17 @@ begin
   GetSystemTime(st);
   sd := SystemTimeToDateTime(st);
   if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_SystemTime) then
-    Result := '<sasx:systemtime>'+DateTime_To_ISO8601(sd, TRUE)+'</sasx:systemtime>'+#13#10;
+    Result := '<sasx:systemtime>' + DateTime_To_ISO8601A(sd, TRUE) + '</sasx:systemtime>' + #13#10;
     
   // write local time and shift
   if SystemTimeToTzSpecificLocalTime(nil, st, lt) then begin
     ld := SystemTimeToDateTime(lt);
-    if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_LocalTime) then
-      Result := Result + '<sasx:localtime>'+DateTime_To_ISO8601(ld, TRUE)+'</sasx:localtime>'+#13#10;
-    if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_TimeShift) then
-      Result := Result + '<sasx:timeshift>'+Round_Float64_to_String((ld-sd)*SecsPerDay, FFormatSettings, round_timeshift)+'</sasx:timeshift>'+#13#10;
+    if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_LocalTime) then begin
+      Result := Result + '<sasx:localtime>' + DateTime_To_ISO8601A(ld, TRUE) + '</sasx:localtime>' + #13#10;
+    end;
+    if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btWrite_Sasx_TimeShift) then begin
+      Result := Result + '<sasx:timeshift>' + Round_Float64_to_StringA((ld-sd)*SecsPerDay, FFormatSettings, round_timeshift) + '</sasx:timeshift>' + #13#10;
+    end;
   end;
 end;
 
@@ -675,12 +719,6 @@ end;
 function Tvsagps_track_saver.InternalGetTrackParamString(const pATP: Pvsagps_AddTrackPoint;
                                                          const ATrackParam: TVSAGPS_TrackParam;
                                                          var AParamValue: AnsiString): Boolean;
-
-  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: AnsiString);
-  begin
-    if (not NoData_Float64(AValue)) then
-      AParamValue:=AParamValue+'<'+ATagName+'>'+Round_Float64_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
-  end;
 
   procedure _AddSatsInfo;
   var s: AnsiString;
@@ -734,7 +772,7 @@ begin
         // local time to trk name
         if (0<Length(AParamValue)) then
           AParamValue:=AParamValue+' ';
-        AParamValue:=AParamValue+DateTime_To_ISO8601(Now,FALSE);
+        AParamValue := AParamValue + DateTime_To_ISO8601A(Now,FALSE);
       end;
 
       tpTrkPtExtensions, tpWptExtensions, tpTrkExtensions: begin
@@ -753,11 +791,11 @@ begin
             if (nil<>pATP^.pPos) then
             with pATP^.pPos^ do begin
               // sasx:course
-              _AddRoundFloat64(Heading, round_heading, 'sasx:course');
+              AddRoundFloat64(AParamValue, Heading, round_heading, 'sasx:course');
               // sasx:speed_kmh
-              _AddRoundFloat64(Speed_KMH, round_hspeed, 'sasx:speed_kmh');
+              AddRoundFloat64(AParamValue, Speed_KMH, round_hspeed, 'sasx:speed_kmh');
               // sasx:vspeed_ms
-              _AddRoundFloat64(VSpeed_MS, round_vspeed, 'sasx:vspeed_ms');
+              AddRoundFloat64(AParamValue, VSpeed_MS, round_vspeed, 'sasx:vspeed_ms');
             end;
             // additional satellites params
             _AddSatsInfo;
@@ -780,12 +818,12 @@ begin
         if (0<>FVSAGPS_GPX_WRITER_PARAMS^.btUse_Predefined_Extensions[geNMEA]) and (nil<>pATP^.pPos) then
         with pATP^.pPos^ do begin
           // nmea:course
-          _AddRoundFloat64(Heading, round_heading, 'nmea:course');
+          AddRoundFloat64(AParamValue, Heading, round_heading, 'nmea:course');
           // nmea:speed
-          _AddRoundFloat64(Speed_KMH, round_hspeed, 'nmea:speed');
+          AddRoundFloat64(AParamValue, Speed_KMH, round_hspeed, 'nmea:speed');
         end;
 
-        // garmin extensions
+        // TODO: garmin extensions
         // http://developer.garmin.com/schemas/gpxx/v3/
         // Temperature
         // Depth
@@ -838,42 +876,32 @@ var
     InternalRunCallback(pATP, Result, ntp, ASubTagName);
   end;
 
-  procedure _AddRoundFloat64(const AValue: Double; const ARound: ShortInt; const ATagName: AnsiString);
-  begin
-    if (not NoData_Float64(AValue)) then
-      Result:=Result+'<'+ATagName+'>'+Round_Float64_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
-  end;
-
-  procedure _AddRoundFloat32(const AValue: Single; const ARound: ShortInt; const ATagName: AnsiString);
-  begin
-    if (not NoData_Float32(AValue)) then
-      Result:=Result+'<'+ATagName+'>'+Round_Float32_to_String(AValue, FFormatSettings, ARound)+'</'+ATagName+'>'+#13#10;
-  end;
-
 begin
   with pATP^.pPos^ do begin
     // lat lon
-    Result:='<'+ATagName+
-            ' lat="'+Round_Float64_to_String(PositionLat, FFormatSettings, round_posn)+
-            '" lon="'+Round_Float64_to_String(PositionLon, FFormatSettings, round_posn)+'">'+#13#10;
+    Result := '<' + ATagName +
+             ' lat="' + Round_Float64_to_StringA(PositionLat, FFormatSettings, round_posn) +
+            '" lon="' + Round_Float64_to_StringA(PositionLon, FFormatSettings, round_posn) + '">' + #13#10;
 
     // ele - Elevation (in meters) of the point
-    _AddRoundFloat64(Altitude, round_ele, 'ele');
+    AddRoundFloat64(Result, Altitude, round_ele, 'ele');
 
     // time - Creation/modification timestamp for element.
     // Date and time in are in Univeral Coordinated Time (UTC), not local time!
     // Conforms to ISO 8601 specification for date/time representation.
     // Fractional seconds are allowed for millisecond timing in tracklogs
-    if UTCDateOK and UTCTimeOK then
-      Result:=Result+'<time>'+DateTime_To_ISO8601(UTCDate+UTCTime, ATimeWithMSec)+'</time>'+#13#10;
+    if UTCDateOK and UTCTimeOK then begin
+      Result := Result + '<time>' + DateTime_To_ISO8601A(UTCDate+UTCTime, ATimeWithMSec) + '</time>' + #13#10;
+    end;
 
     // magvar - Magnetic variation (in degrees) at the point
     // VMagVar:=APosition.MagVar;
-    if (MagVar.variation_symbol<>#0) then
-      _AddRoundFloat32(MagVar.variation_degree, round_heading, 'magvar');
+    if (MagVar.variation_symbol<>#0) then begin
+      AddRoundFloat32(Result, MagVar.variation_degree, round_heading, 'magvar');
+    end;
 
     // geoidheight - Height (in meters) of geoid (mean sea level) above WGS84 earth ellipsoid. As defined in NMEA GGA message
-    _AddRoundFloat64(GeoidHeight, round_ele, 'geoidheight');
+    AddRoundFloat64(Result, GeoidHeight, round_ele, 'geoidheight');
 
     // name
     _AddTP(0, 'name');
@@ -911,40 +939,47 @@ begin
     Result:=Result+'<fix>'+si+'</fix>'+#13#10;
 
     // sat - nonNegativeInteger (both gp and gl)
-    if (nil<>pATP^.pSatFixAll) then
-      Result:=Result+'<sat>'+IntToStr(Get_PVSAGPS_FIX_ALL_FixCount(pATP^.pSatFixAll,FALSE))+'</sat>'+#13#10;
+    if (nil<>pATP^.pSatFixAll) then begin
+      Result := Result + '<sat>' + IntToStrA(Get_PVSAGPS_FIX_ALL_FixCount(pATP^.pSatFixAll, False)) + '</sat>' + #13#10;
+    end;
 
     // hdop
-    _AddRoundFloat64(HDOP, round_hdop, 'hdop');
+    AddRoundFloat64(Result, HDOP, round_hdop, 'hdop');
 
     // vdop
-    _AddRoundFloat64(VDOP, round_vdop, 'vdop');
+    AddRoundFloat64(Result, VDOP, round_vdop, 'vdop');
 
     // pdop
-    _AddRoundFloat64(PDOP, round_pdop, 'pdop');
+    AddRoundFloat64(Result, PDOP, round_pdop, 'pdop');
 
     // ageofdgpsdata
-    if ('D'=DGPS.Nmea23_Mode) then
-      _AddRoundFloat32(DGPS.DGPS_Age_Second, round_age_second, 'ageofdgpsdata');
+    if ('D'=DGPS.Nmea23_Mode) then begin
+      AddRoundFloat32(Result, DGPS.DGPS_Age_Second, round_age_second, 'ageofdgpsdata');
+    end;
 
     // dgpsid - 0 <= value <= 1023 - Represents a differential GPS station
-    if ('D'=DGPS.Nmea23_Mode) then
-      Result:=Result+'<dgpsid>'+IntToStr(DGPS.DGPS_Station_ID)+'</dgpsid>'+#13#10;
+    if ('D'=DGPS.Nmea23_Mode) then begin
+      Result := Result + '<dgpsid>' + IntToStrA(DGPS.DGPS_Station_ID) + '</dgpsid>' + #13#10;
+    end;
 
     // speed (m/s) - undocumented (use some apps and devices)
     if (0<>VSAGPS_GPX_WRITER_PARAMS^.btWrite_Undocumented_Speed) then
-      if (not NoData_Float64(Speed_KMH)) then
-        Result:=Result+'<speed>'+Round_Float64_to_String(Speed_KMH/3.6, FFormatSettings, round_hspeed)+'</speed>'+#13#10;
+    if (not NoData_Float64(Speed_KMH)) then begin
+      Result := Result + '<speed>' +
+                Round_Float64_to_StringA(Speed_KMH/3.6, FFormatSettings, round_hspeed) +
+                '</speed>' + #13#10;
+    end;
 
     // course - undocumented (use some apps and devices)
-    if (0<>VSAGPS_GPX_WRITER_PARAMS^.btWrite_Undocumented_Course) then
-      _AddRoundFloat64(Heading, round_heading, 'course');
+    if (0<>VSAGPS_GPX_WRITER_PARAMS^.btWrite_Undocumented_Course) then begin
+      AddRoundFloat64(Result, Heading, round_heading, 'course');
+    end;
 
     // extensions
     _AddTP(7, 'extensions');
 
     // close tag
-    Result:=Result+'</'+ATagName+'>'+#13#10;
+    Result := Result + '</' + ATagName + '>' + #13#10;
   end;
 end;
 

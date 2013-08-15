@@ -43,6 +43,19 @@ function Round_Float64_to_String(const f: Float64;
                                  const fs: TFormatSettings;
                                  const dec_round: ShortInt=Low(TRoundToRange)): string;
 
+function Round_Float32_to_StringA(
+  const f: Float32;
+  const fs: TFormatSettings;
+  const dec_round: ShortInt
+): AnsiString;
+
+function Round_Float64_to_StringA(
+  const f: Float64;
+  const fs: TFormatSettings;
+  const dec_round: ShortInt
+): AnsiString;
+
+
 procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);
 
 implementation
@@ -118,6 +131,24 @@ begin
       do_after_to_str(Result,fs);
     end;
   end;
+end;
+
+function Round_Float32_to_StringA(
+  const f: Float32;
+  const fs: TFormatSettings;
+  const dec_round: ShortInt
+): AnsiString;
+begin
+  Result := AnsiString(Round_Float32_to_String(f, fs, dec_round));
+end;
+
+function Round_Float64_to_StringA(
+  const f: Float64;
+  const fs: TFormatSettings;
+  const dec_round: ShortInt
+): AnsiString;
+begin
+  Result := AnsiString(Round_Float64_to_String(f, fs, dec_round));
 end;
 
 procedure VSAGPS_PrepareFormatSettings(var AFormatSettings: TFormatSettings);

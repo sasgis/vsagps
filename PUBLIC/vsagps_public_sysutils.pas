@@ -59,6 +59,21 @@ function FloatToStrFixedA(
   const AFormatSettings: TFormatSettings
 ): AnsiString;
 
+function FloatToStrA(
+  const Value: Extended;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+
+function DateToStrA(
+  const DateTime: TDateTime;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+
+function TimeToStrA(
+  const DateTime: TDateTime;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+
 function StrToFloatA(
   const S: AnsiString;
   const AFormatSettings: TFormatSettings
@@ -87,6 +102,8 @@ function StringReplaceA(
   const S, OldPattern, NewPattern: AnsiString;
   Flags: TReplaceFlags
 ): AnsiString; deprecated;
+
+procedure StringReplaceSingleCharA(var S: AnsiString; const AOld, ANew: AnsiChar);
 
 function StrLenW(Src: PWideChar): DWORD;
 
@@ -271,6 +288,50 @@ begin
   );
 end;
 
+function FloatToStrA(
+  const Value: Extended;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+var
+  VBuffer: array [0..63] of AnsiChar;
+begin
+  SetString(
+    Result,
+    VBuffer,
+    FloatToText(
+      VBuffer,
+      Value,
+      fvExtended,
+      ffGeneral, //Format,
+      15,
+      0,
+      AFormatSettings
+    )
+  );
+end;
+
+function DateToStrA(
+  const DateTime: TDateTime;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+var
+  VResult: string;
+begin
+  DateTimeToString(VResult, AFormatSettings.ShortDateFormat, DateTime, AFormatSettings);
+  Result := AnsiString(VResult);
+end;
+
+function TimeToStrA(
+  const DateTime: TDateTime;
+  const AFormatSettings: TFormatSettings
+): AnsiString;
+var
+  VResult: string;
+begin
+  DateTimeToString(VResult, AFormatSettings.LongTimeFormat, DateTime, AFormatSettings);
+  Result := AnsiString(VResult);
+end;
+
 function StrToFloatA(
   const S: AnsiString;
   const AFormatSettings: TFormatSettings
@@ -352,6 +413,14 @@ begin
       Flags
     )
   );
+end;
+
+procedure StringReplaceSingleCharA(var S: AnsiString; const AOld, ANew: AnsiChar);
+var i: Integer;
+begin
+  for i := 1 to Length(S) do
+  if (AOld = S[i]) then
+    S[i] := ANew;
 end;
 
 function StrLenW(Src: PWideChar): DWORD;

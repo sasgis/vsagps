@@ -128,6 +128,8 @@ type
     pLowLevelHandler: TVSAGPS_LOWLEVEL_PACKET_HANDLER;
     // trackpoint handler (all types) - NIL by default
     pTrackPointHandler: TVSAGPS_TRACKPOINT_HANDLER;
+    // location API handler
+    pLocationApi_Handler: TVSAGPS_NMEA_ABSTRACT_HANDLER;
     // handlers for garmin packets
     pGARMIN_D800_HANDLER: TVSAGPS_GARMIN_D800_HANDLER; // D800 aka PVT
     pGARMIN_MEAS_HANDLER: TVSAGPS_GARMIN_MEAS_HANDLER; // Measurements

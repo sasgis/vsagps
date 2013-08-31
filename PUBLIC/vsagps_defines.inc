@@ -18,6 +18,12 @@
 ////{$define VSAGPS_USE_UNICODE}
 {$IFEND}
 
+{$IF CompilerVersion >= 25}
+  ////{$define VSAGPS_USE_LOCATIONAPI_TLB}
+{$ELSE}
+  {$define VSAGPS_USE_LOCATIONAPI_TLB}
+{$IFEND}
+
 {$ifdef VER230} // Delphi XE2 
   {$define VSAGPS_XERCES_XML_IMPORT_FORBIDDEN}
 {$endif}

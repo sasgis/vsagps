@@ -78,6 +78,7 @@ type
     procedure WorkingThread_Process_Packets(const AWorkingThreadPacketFilter: DWORD);
     // parse garmin packets - very simple
     function Parse_GarminPVT_Packets(const pPacket: PGarminUSB_Custom_Packet; const BaseAuxPacketFlags: DWORD): DWORD;
+    function Parse_LocationAPI_Packets(const ABuffer: Pointer; const BaseAuxPacketFlags: DWORD): DWORD;
   protected
     procedure InternalMakeUnitInfoCS;
     procedure InternalKillUnitInfoCS;
@@ -883,6 +884,20 @@ begin
   end;
 end;
 
+function Tvsagps_device_base.Parse_LocationAPI_Packets(const ABuffer: Pointer; const BaseAuxPacketFlags: DWORD): DWORD;
+var
+  VFunc: TVSAGPS_NMEA_ABSTRACT_HANDLER;
+begin
+  Result := 0;
+  if (nil = ABuffer) then
+    Exit;
+
+  VFunc := FALLDeviceParams^.pLocationApi_Handler;
+  if Assigned(VFunc) then begin
+    Result := VFunc(InternalGetUserPointer, FUnitIndex, BaseAuxPacketFlags, ABuffer);
+  end;
+end;
+
 procedure Tvsagps_device_base.SetBaseParams(
   const AUnitIndex: Byte;
   const AGPSDeviceType: DWORD;
@@ -966,7 +981,7 @@ end;
 
 function Tvsagps_device_base.WorkingThread_Receive_Packets(const AWorkingThreadPacketFilter: DWORD): Boolean;
 begin
-  Result:=FALSE; // to end outer loop just return FALSE
+  Result := False; // to end outer loop just return True
 end;
 
 function Tvsagps_device_base.WorkingThread_SendPacket: Boolean;

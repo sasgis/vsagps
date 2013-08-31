@@ -240,6 +240,7 @@ procedure Tvsagps_track_saver.DoAddSerialized(const ATrackType: TVSAGPS_TrackTyp
                                               const dwLen: DWORD);
 begin
   case ATrackType of
+    ttLocationAPI,
     ttNMEA, ttGarmin: begin
       // counters
       Inc(FTTP_SegPointsCounter[ATrackType]);
@@ -259,7 +260,7 @@ var
   sRes: AnsiString;
 begin
   // skip for low-level logs
-  if (ATrackType in [ttNMEA, ttGarmin]) then
+  if (ATrackType in [ttNMEA, ttGarmin, ttLocationAPI]) then
     Exit;
 
   // fill value
@@ -308,7 +309,7 @@ procedure Tvsagps_track_saver.DoAddWayPoint(const ATrackType: TVSAGPS_TrackType;
 var sRes: AnsiString;
 begin
   // skip for low-level logs
-  if (ATrackType in [ttNMEA, ttGarmin]) then
+  if (ATrackType in [ttNMEA, ttGarmin, ttLocationAPI]) then
     Exit;
 
   // fill value

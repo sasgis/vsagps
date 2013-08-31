@@ -83,6 +83,7 @@ implementation
 uses
   vsagps_public_memory,
   vsagps_public_debugstring,
+  vsagps_device_location_api,
   vsagps_device_usb_garmin,
   vsagps_device_com_nmea,
   vsagps_track_reader,
@@ -509,6 +510,7 @@ begin
   Result:=FALSE;
   if (0=(AGPSDevType and
           (gdt_USB_Garmin or
+           gdt_LocationAPI or
            gdt_FILE_Track or
            gdt_COM_NMEA0183))) then
     Exit;
@@ -567,6 +569,9 @@ begin
     end else if (gdt_USB_Garmin=(AGPSDevType and gdt_USB_Garmin)) then begin
       // usb garmin
       p^.objDevice:=Tvsagps_device_usb_garmin.Create;
+    end else if (gdt_LocationAPI = (AGPSDevType and gdt_LocationAPI)) then begin
+      // location sensor API
+      p^.objDevice := Tvsagps_device_location_api.Create;
     end else if (gdt_COM_NMEA0183=(AGPSDevType and gdt_COM_NMEA0183)) then begin
       // com nmea
       p^.objDevice:=Tvsagps_device_com_nmea.Create;

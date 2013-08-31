@@ -21,7 +21,14 @@ const
   lwpf_SkipNoneFix = $00000001; // do not save points to tracks without fix
 
 type
-  TVSAGPS_TrackType = (ttPLT, ttGPX, ttNMEA, ttGarmin{, ttKML});
+  TVSAGPS_TrackType = (
+    ttPLT,
+    ttGPX,
+    ttNMEA,
+    ttGarmin,
+    ttLocationAPI{,
+    ttKML}
+  );
   TVSAGPS_TrackTypes = set of TVSAGPS_TrackType;
 
   TVSAGPS_TrackParam = (tpHdrXmlns,
@@ -152,7 +159,14 @@ const
   stp_SetLogWriterParam = $06;
 
 const
-  CVSAGPS_TrackTypeExt: array [TVSAGPS_TrackType] of WideString = ('.plt', '.gpx', '.nmea', '.garmin'{, '.kml'});
+  CVSAGPS_TrackTypeExt: array [TVSAGPS_TrackType] of WideString = (
+    '.plt',
+    '.gpx',
+    '.nmea',
+    '.garmin',
+    '.locationapi'{,
+    '.kml'}
+  );
 
   C_close_TRK_on_close_TRKSEG = TRUE;
 

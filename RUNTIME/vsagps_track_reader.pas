@@ -56,6 +56,7 @@ type
       const ALineParserProc: TVSAGPS_DivideStringToLinesA_Proc
     );
     // ONLY for ANSI files!!!
+    procedure InternalLineParser_LocationAPI(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalLineParser_Garmin(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalLineParser_NMEA(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
     procedure InternalLineParser_PLT(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
@@ -90,6 +91,7 @@ implementation
 
 uses
   vsagps_public_sats_info,
+  vsagps_public_location_api,
   vsagps_public_memory,
   DateUtils;
 
@@ -187,6 +189,23 @@ begin
     // send buffer as packet
     Sleep(0);
     Parse_GarminPVT_Packets(Pointer(buf_ptr), 0);
+    SleepInXMLParser;
+  finally
+    VSAGPS_FreeMem(buf_ptr);
+  end;
+end;
+
+procedure Tvsagps_track_reader.InternalLineParser_LocationAPI(const ALine: AnsiString; const ASelfAuxPtr: Pointer);
+var
+  buf_ptr: PByte;
+begin
+  // make original location api buffer from string
+  buf_ptr := VSAGPS_AllocPByteByString(ALine, sizeof(Tvsagps_location_api_packet));
+  if (nil<>buf_ptr) then
+  try
+    // send buffer as packet
+    Sleep(0);
+    Parse_LocationAPI_Packets(Pointer(buf_ptr), 0);
     SleepInXMLParser;
   finally
     VSAGPS_FreeMem(buf_ptr);
@@ -376,6 +395,10 @@ begin
         ttGarmin: begin
           // start garmin parser
           InternalParseTrackLines(FCurrentFile, InternalLineParser_Garmin);
+        end;
+        ttLocationAPI: begin
+          // start location api parser
+          InternalParseTrackLines(FCurrentFile, InternalLineParser_LocationAPI);
         end;
         ttPLT: begin
           // start plt parser

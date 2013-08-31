@@ -12,10 +12,10 @@ unit LocationApiLib_TLB;
 // ************************************************************************ //
 
 // $Rev: 8291 $
-// File generated on 15.05.2013 09:10:26 from Type Library described below.
+// File generated on 31.08.2013 0:27:29 from Type Library described below.
 
 // ************************************************************************  //
-// Type Lib: D:\Windows\System32\LocationApi.dll (1)
+// Type Lib: C:\Windows\System32\LocationApi.dll (1)
 // LIBID: {4486DF98-22A5-4F6B-BD5C-8CADCEC0A6DE}
 // LCID: 0
 // Helpfile: 
@@ -24,12 +24,12 @@ unit LocationApiLib_TLB;
 //   (1) v2.0 stdole, (C:\Windows\system32\stdole2.tlb)
 // Errors:
 //   Hint: Symbol 'type' renamed to 'type_'
-//   Error creating palette bitmap of (TLocation) : No Server registered for this CoClass
-//   Error creating palette bitmap of (TDefaultLocation) : No Server registered for this CoClass
-//   Error creating palette bitmap of (TLatLongReportFactory) : No Server registered for this CoClass
-//   Error creating palette bitmap of (TCivicAddressReportFactory) : No Server registered for this CoClass
-//   Error creating palette bitmap of (TDispLatLongReport) : No Server registered for this CoClass
-//   Error creating palette bitmap of (TDispCivicAddressReport) : No Server registered for this CoClass
+//   Error creating palette bitmap of (TLocation) : Server C:\Windows\System32\LocationApi.dll contains no icons
+//   Error creating palette bitmap of (TDefaultLocation) : Server C:\Windows\System32\LocationApi.dll contains no icons
+//   Error creating palette bitmap of (TLatLongReportFactory) : Server C:\Windows\System32\LocationApi.dll contains no icons
+//   Error creating palette bitmap of (TCivicAddressReportFactory) : Server C:\Windows\System32\LocationApi.dll contains no icons
+//   Error creating palette bitmap of (TDispLatLongReport) : Server C:\Windows\System32\LocationApi.dll contains no icons
+//   Error creating palette bitmap of (TDispCivicAddressReport) : Server C:\Windows\System32\LocationApi.dll contains no icons
 // ************************************************************************ //
 // *************************************************************************//
 // NOTE:                                                                      
@@ -399,7 +399,7 @@ type
     lLbound: Integer;
   end;
 
-  ULONG_PTR = Largeuint; 
+  ULONG_PTR = LongWord; 
 
   tagIDLDESC = packed record
     dwReserved: ULONG_PTR;
@@ -1767,12 +1767,14 @@ type
 {$ENDIF}
 
 
+(*
 procedure Register;
 
 resourcestring
   dtlServerPage = '(none)';
 
   dtlOcxPage = '(none)';
+*)
 
 implementation
 
@@ -2597,10 +2599,12 @@ end;
 
 {$ENDIF}
 
+(*
 procedure Register;
 begin
   RegisterComponents(dtlServerPage, [TLocation, TDefaultLocation, TLatLongReportFactory, TCivicAddressReportFactory, 
     TDispLatLongReport, TDispCivicAddressReport]);
 end;
+*)
 
 end.

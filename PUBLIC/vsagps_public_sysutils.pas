@@ -231,7 +231,7 @@ end;
 
 function IntToStrA(const AValue: Integer): AnsiString;
 const
-  cFormat = AnsiString('%i');
+  cFormat = AnsiString('%d');
 var
   VBuffer: array [0..15] of AnsiChar;
   VLen: Cardinal;

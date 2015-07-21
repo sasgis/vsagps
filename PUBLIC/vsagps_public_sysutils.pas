@@ -41,9 +41,9 @@ function SameTextA(const S1, S2: AnsiString): Boolean;
 
 function TrimA(const S: AnsiString): AnsiString;
 
-{$IF CompilerVersion < 23}
+{$IFNDEF UNICODE}
 function CharInSet(const AChar: AnsiChar; const ASet: TSysCharSet): Boolean; inline;
-{$IFEND}
+{$ENDIF}
 
 procedure DelCharInSetA(var S: AnsiString; const ASet: TSysCharSet);
 
@@ -209,12 +209,12 @@ begin
   Result := Copy(S, I, L - I + 1);
 end;
 
-{$IF CompilerVersion < 23}
+{$IFNDEF UNICODE}
 function CharInSet(const AChar: AnsiChar; const ASet: TSysCharSet): Boolean; inline;
 begin
   Result := (AChar in ASet);
 end;
-{$IFEND}
+{$ENDIF}
 
 procedure DelCharInSetA(var S: AnsiString; const ASet: TSysCharSet);
 var

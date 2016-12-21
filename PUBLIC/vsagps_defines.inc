@@ -19,7 +19,7 @@
 {$IFEND}
 
 {$IF CompilerVersion >= 25}
-  ////{$define VSAGPS_USE_LOCATIONAPI_TLB}
+  {$define VSAGPS_USE_LOCATIONAPI_TLB} // ToDo
 {$ELSE}
   {$define VSAGPS_USE_LOCATIONAPI_TLB}
 {$IFEND}

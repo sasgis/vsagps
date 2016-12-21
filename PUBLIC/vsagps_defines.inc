@@ -24,13 +24,9 @@
   {$define VSAGPS_USE_LOCATIONAPI_TLB}
 {$IFEND}
 
-{$ifdef VER220} // Delphi XE
+{$IF CompilerVersion >= 22} // Delphi XE and UP
   {$define VSAGPS_XERCES_XML_IMPORT_FORBIDDEN}
-{$endif}
-
-{$ifdef VER230} // Delphi XE2
-  {$define VSAGPS_XERCES_XML_IMPORT_FORBIDDEN}
-{$endif}
+{$IFEND}
 
 {$if not defined(VSAGPS_XERCES_XML_IMPORT_FORBIDDEN)}
 {$define VSAGPS_USE_XERCES_XML_IMPORT}

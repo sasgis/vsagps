@@ -481,7 +481,7 @@ begin
     FDeviceThread.FGPSRunning:=TRUE;
     FDeviceThread.FreeOnTerminate:=TRUE;
     FDeviceThread.OnTerminate:=InternalOnDeviceThreadTerminate;
-    FDeviceThread.Resume;
+    FDeviceThread.{$IF CompilerVersion < 23}Resume{$ELSE}Start{$IFEND};
   end;
 end;
 

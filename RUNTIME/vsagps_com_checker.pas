@@ -587,7 +587,7 @@ begin
     //if FPrintDebug then
       //Writeln('Thread '+IntToStr(i)+' created');
 
-    t.Resume;
+    t.{$IF CompilerVersion < 23}Resume{$ELSE}Start{$IFEND};
 
     InternalPendingThread(t);
 

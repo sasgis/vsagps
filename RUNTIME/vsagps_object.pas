@@ -630,7 +630,7 @@ begin
     FPacketThread.GPSRunning:=TRUE;
     FPacketThread.FreeOnTerminate:=TRUE;
     FPacketThread.OnTerminate:=InternalOnPacketThreadTerminate;
-    FPacketThread.Resume;
+    FPacketThread.{$IF CompilerVersion < 23}Resume{$ELSE}Start{$IFEND};
   end;
   inherited;
 end;

@@ -6,21 +6,19 @@
 *)
 
 
-//////{$define VSAGPS_USE_DEBUG_STRING}
+{.$define VSAGPS_USE_DEBUG_STRING}
 
-//////{$define USE_NMEA_VTG}
+{.$define USE_NMEA_VTG}
 
-//////{$define USE_SIMPLE_CLASSES}
+{.$define USE_SIMPLE_CLASSES}
 
-//////{$define USE_NATIVE_NT_API}
+{.$define USE_NATIVE_NT_API}
 
 {$IF CompilerVersion >= 23}
-////{$define VSAGPS_USE_UNICODE}
+{.$define VSAGPS_USE_UNICODE}
 {$IFEND}
 
-{$IF CompilerVersion >= 25}
-  {$define VSAGPS_USE_LOCATIONAPI_TLB} // ToDo
-{$ELSE}
+{$IF CompilerVersion < 25}
   {$define VSAGPS_USE_LOCATIONAPI_TLB}
 {$IFEND}
 

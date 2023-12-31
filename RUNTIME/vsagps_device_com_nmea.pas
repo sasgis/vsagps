@@ -91,7 +91,9 @@ type
 
     procedure ExecuteGPSCommand(const ACommand: LongInt;
                                 const APointer: Pointer); override;
-    function SerializePacket(const APacket: Pointer; const AReserved: PDWORD): PAnsiChar; override;
+    function SerializePacket(const APacket: Pointer;
+                             out ASerializedSize: DWORD;
+                             const AReserved: PDWORD): Pointer; override;
     function ParsePacket(const ABuffer: Pointer): DWORD; override;
 
     function SendPacket(const APacketBuffer: Pointer;
@@ -1080,26 +1082,21 @@ begin
 {$ifend}
 end;
 
-function Tvsagps_device_com_nmea.SerializePacket(const APacket: Pointer; const AReserved: PDWORD): PAnsiChar;
+function Tvsagps_device_com_nmea.SerializePacket(const APacket: Pointer;
+                                                 out ASerializedSize: DWORD;
+                                                 const AReserved: PDWORD): Pointer;
 var
   VData: Pointer;
-  VSize: DWORD;
 begin
 {$if defined(VSAGPS_USE_DEBUG_STRING)}
   VSAGPS_DebugAnsiString('Tvsagps_device_com_nmea.SerializePacket:');
 {$ifend}
 
-  if (APacket<>nil) and (AReserved<>nil) then begin
-    VSize := NmeaPacketSize(APacket);
-    VData := NmeaPacketData(APacket);
-    AReserved^ := VSize;
-    Result := VSAGPS_GetMem(VSize);
-    Move(VData^, Result^, VSize);
-  end else
   if (APacket<>nil) then begin
-    Assert(False);
+    ASerializedSize := NmeaPacketSize(APacket);
     VData := NmeaPacketData(APacket);
-    Result:=VSAGPS_AllocPCharByPChar(PAnsiChar(VData), TRUE);
+    Result := VSAGPS_GetMem(ASerializedSize);
+    Move(VData^, Result^, ASerializedSize);
   end else begin
     Result:=nil;
   end;

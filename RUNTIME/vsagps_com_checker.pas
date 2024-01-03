@@ -276,19 +276,32 @@ begin
 
     if (FComHandle = 0) or (FComHandle = INVALID_HANDLE_VALUE) then begin
       FComError := GetLastError;
+      {$if defined(VSAGPS_USE_DEBUG_STRING)}
+      VSAGPS_DebugAnsiString('TComCheckerThread.Execute: CreateFile error = ' + IntToStrA(FComError));
+      {$ifend}
       Exit;
     end;
 
     try
       FComReadOk := TryReceivePacket;
       {$if defined(VSAGPS_USE_DEBUG_STRING)}
-      VSAGPS_DebugAnsiString('TComCheckerThread.Execute: ' + AnsiString(BoolToStr(FComReadOk, True)));
+      VSAGPS_DebugAnsiString('TComCheckerThread.Execute: FComReadOk = ' + AnsiString(BoolToStr(FComReadOk, True)));
       {$ifend}
     finally
       if not FComKeepHandle then begin
-        PurgeComm(FComHandle, PURGE_TXABORT or PURGE_RXABORT or PURGE_TXCLEAR or PURGE_RXCLEAR);
+        {$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TComCheckerThread.Execute: closing FComHandle');
+        {$ifend}
+        if not PurgeComm(FComHandle, PURGE_TXABORT or PURGE_RXABORT or PURGE_TXCLEAR or PURGE_RXCLEAR) then begin
+          {$if defined(VSAGPS_USE_DEBUG_STRING)}
+          VSAGPS_DebugAnsiString('TComCheckerThread.Execute: PurgeComm error = ' + IntToStrA(GetLastError));
+          {$ifend}
+        end;
         CloseHandle(FComHandle);
         FComHandle := 0;
+        {$if defined(VSAGPS_USE_DEBUG_STRING)}
+        VSAGPS_DebugAnsiString('TComCheckerThread.Execute: closed FComHandle');
+        {$ifend}
       end;
     end;
   finally
@@ -489,6 +502,7 @@ begin
       FOnThreadFinished(Self, AThread);
     except
     end;
+    AThread.Terminate;
     AThread.Free;
   finally
     FCOMs.Objects[AIndex]:=nil;

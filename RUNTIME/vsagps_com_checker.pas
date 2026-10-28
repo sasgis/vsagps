@@ -11,9 +11,7 @@ unit vsagps_com_checker;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
   Classes,
 {$if defined(VSAGPS_USE_DEBUG_STRING)}

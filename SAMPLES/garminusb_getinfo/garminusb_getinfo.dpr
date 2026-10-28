@@ -11,9 +11,7 @@ program garminusb_getinfo;
 {$I vsagps_defines.inc}
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
   vsagps_public_base,
   vsagps_public_types,

@@ -11,9 +11,7 @@ unit vsagps_queue;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
   vsagps_public_classes;
 

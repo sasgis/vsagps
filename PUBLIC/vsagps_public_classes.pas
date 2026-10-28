@@ -11,9 +11,7 @@ unit vsagps_public_classes;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
   Classes,
 {$IFDEF HAS_ANSISTRINGS_UNIT}

@@ -11,9 +11,7 @@ unit vsagps_device_base;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
 {$IFDEF HAS_ANSISTRINGS_UNIT}
   AnsiStrings,

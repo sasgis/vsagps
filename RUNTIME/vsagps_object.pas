@@ -11,9 +11,7 @@ unit vsagps_object;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
   Windows,
-{$ENDIF}
   SysUtils,
   Classes,
   //Dialogs,

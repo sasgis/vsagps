@@ -19,13 +19,6 @@ uses
   StrUtils;
 {$ENDIF}
 
-const
-{$IFDEF UNICODE}
-  CIsWide = True;
-{$ELSE}
-  CIsWide = False;
-{$ENDIF}
-
 type
   TVSAGPS_DivideStringToLinesA_Proc = procedure (
     const ALine: AnsiString;

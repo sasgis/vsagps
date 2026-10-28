@@ -294,7 +294,7 @@ begin
     s := AnsiChar(cur^.tag) + s;
     FSupportedProtocols.Append(s);
     // goto next
-    cur:=PProtocol_Data_Type(Pointer(DWORD(Pointer(cur)) + sizeof(Protocol_Data_Type)));
+    cur:=PProtocol_Data_Type(PByte(cur) + sizeof(Protocol_Data_Type));
     if (AData_Size<3) then
       AData_Size:=0
     else

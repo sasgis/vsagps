@@ -26,6 +26,11 @@ const
 const
   setupapi_dll = 'setupapi.dll';
 
+  // SetupAPI checks cbSize strictly:
+  // Win32 expects the packed size (5),
+  // Win64 expects the structure with alignment padding (8).
+  SP_DEVICE_INTERFACE_DETAIL_DATA_A_Size: DWORD = {$IFDEF CPUX64} 8 {$ELSE} 5 {$ENDIF};
+
 type
   HDEVINFO = THandle;
 
@@ -39,7 +44,7 @@ type
     cbSize: DWORD;
     ClassGuid: TGUID;
     DevInst: DWORD;    // DEVINST handle
-    Reserved: DWORD;
+    Reserved: ULONG_PTR;
   end;
   PSP_DEVINFO_DATA = ^SP_DEVINFO_DATA;
 
@@ -47,7 +52,7 @@ type
     cbSize: DWORD;
     InterfaceClassGuid: TGUID;
     Flags: DWORD;
-    Reserved: DWORD;
+    Reserved: ULONG_PTR;
   end;
   PSP_DEVICE_INTERFACE_DATA = ^SP_DEVICE_INTERFACE_DATA;
 
@@ -390,7 +395,7 @@ begin
         if (0<theBytesReturned) then begin
           theDevDetailData := VSAGPS_GetMemZ(theBytesReturned);
           try
-            theDevDetailData^.cbSize := sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A);
+            theDevDetailData^.cbSize := SP_DEVICE_INTERFACE_DETAIL_DATA_A_Size;
             ZeroMemory(@theDevInfoData,sizeof(theDevInfoData));
             theDevInfoData.cbSize:=sizeof(theDevInfoData);
 

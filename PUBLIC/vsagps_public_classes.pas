@@ -368,7 +368,7 @@ end;
 function TStringsA.AddObject(const S: AnsiString; AObject: TObject): Integer;
 begin
   InternalAppendItem(VSAGPS_AllocPCharByString(S, False), Pointer(AObject));
-  Result := 0;
+  Result := Count - 1;
 end;
 
 procedure TStringsA.Append(const S: AnsiString);
@@ -474,7 +474,7 @@ end;
 function TStringsW.AddObject(const S: WideString; AObject: TObject): Integer;
 begin
   InternalAppendItem(VSAGPS_AllocPCharByString(S, False), Pointer(AObject));
-  Result := 0;
+  Result := Count - 1;
 end;
 
 procedure TStringsW.Append(const S: WideString);

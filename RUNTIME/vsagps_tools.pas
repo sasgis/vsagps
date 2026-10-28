@@ -121,7 +121,7 @@ end;
 function VSAGPS_StringList_To_PCharList(sl: TStrings): PVSAGPS_PCHAR_LIST;
 var
   i: Integer;
-  iSize: DWORD;
+  iSize: NativeUInt;
   pLines: PAnsiChar; // pointer to text of first item
   s: AnsiString;
 begin
@@ -131,11 +131,12 @@ begin
     // calc required buffer size (total size)
     iSize:=sizeof(TVSAGPS_PCHAR_LIST); // reserved one pointer - for internal use
 
-    for i := 0 to sl.Count-1 do
+    for i := 0 to sl.Count-1 do begin
       iSize:=sizeof(PAnsiChar)+ // pointer to array
              sizeof(AnsiChar)+ // null-terminated ansichar
-             DWORD(Length(sl[i]))+ // real string length
+             NativeUInt(Length(sl[i]))+ // real string length
              iSize;
+    end;
 
     // make buffer
     Result:=VSAGPS_GetMem(iSize);

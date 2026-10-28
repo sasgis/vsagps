@@ -66,6 +66,11 @@ implementation
 uses
   vsagps_public_memory;
 
+{$IF CompilerVersion <= 18.5}
+type
+  NativeUInt = Cardinal;
+{$IFEND}
+
 function parse_nullstrings_to_strings(
   AData_Size: DWORD;
   ABuffer: PAnsiChar;
@@ -106,7 +111,7 @@ begin
     end;
 
     // next
-    ABuffer := PAnsiChar(Pointer(DWORD(Pointer(ABuffer)) + SizeOf(AnsiChar)));
+    ABuffer := PAnsiChar(Pointer(NativeUInt(Pointer(ABuffer)) + SizeOf(AnsiChar)));
     AData_Size := AData_Size - SizeOf(AnsiChar);
   end;
 
@@ -120,6 +125,7 @@ var
 {$if defined(USE_SIMPLE_CLASSES)}
   EnumPtr: Pvsagps_list_item;
   PayloadPtr: Pointer;
+  L: NativeUInt;
 {$ifend}
   i: Integer;
   iSize: DWORD;
@@ -161,9 +167,11 @@ begin
       EnumPtr:=nil;
       i:=0;
       while sl.EnumItems(EnumPtr, PayloadPtr) do begin
-        CopyMemory(pLines, PAnsiChar(PayloadPtr), StrLenA(PAnsiChar(PayloadPtr))+1);
+        L := StrLenA(PAnsiChar(PayloadPtr));
+        CopyMemory(pLines, PAnsiChar(PayloadPtr), L+1);
         Result^.szItems[i]:=pLines;
-        pLines:=PAnsiChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
+        pLines:=PAnsiChar(Pointer(NativeUInt(Pointer(pLines))+L+1));
+        inc(i);
       end;
 {$else}
       for i := 0 to sl.Count-1 do begin
@@ -171,7 +179,7 @@ begin
         CopyMemory(pLines, PAnsiChar(s), Length(s));
         pLines[Length(s)]:=#0;
         Result^.szItems[i]:=pLines;
-        pLines:=PAnsiChar(Pointer(DWORD(Pointer(pLines))+DWORD(Length(s))+1));
+        pLines:=PAnsiChar(Pointer(NativeUInt(Pointer(pLines))+NativeUInt(Length(s))+1));
       end;
 {$ifend}
     except

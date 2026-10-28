@@ -27,11 +27,7 @@ uses
   vsagps_public_print,
   vsagps_public_sysutils,
   vsagps_public_version,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
   Classes,
-{$ifend}
   DateUtils,
   Math;
 

@@ -104,7 +104,6 @@
         </DelphiCompile>
         <DCCReference Include="vsagps_com_checker_test.pas"/>
         <DCCReference Include="vsagps_device_com_nmea_test.pas"/>
-        <DCCReference Include="..\RUNTIME\vsagps_classes.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_com_checker.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_device_base.pas"/>
         <DCCReference Include="..\Runtime\vsagps_device_com_nmea.pas"/>
@@ -121,10 +120,8 @@
         <DCCReference Include="..\RUNTIME\vsagps_units.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_base.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_classes.pas"/>
-        <DCCReference Include="..\PUBLIC\vsagps_public_com_checker.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_debugstring.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_device.pas"/>
-        <DCCReference Include="..\PUBLIC\vsagps_public_dll.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_events.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_garmin.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_gpx.pas"/>

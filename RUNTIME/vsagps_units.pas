@@ -15,11 +15,7 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if defined(USE_SIMPLE_CLASSES)}
-  vsagps_classes,
-{$else}
   Classes,
-{$ifend}
   vsagps_public_base,
   vsagps_public_types,
   vsagps_public_device,

@@ -122,11 +122,6 @@ end;
 
 function VSAGPS_StringList_To_PCharList(sl: TStrings): PVSAGPS_PCHAR_LIST;
 var
-{$if defined(USE_SIMPLE_CLASSES)}
-  EnumPtr: Pvsagps_list_item;
-  PayloadPtr: Pointer;
-  L: NativeUInt;
-{$ifend}
   i: Integer;
   iSize: DWORD;
   pLines: PAnsiChar; // pointer to text of first item
@@ -138,21 +133,11 @@ begin
     // calc required buffer size (total size)
     iSize:=sizeof(TVSAGPS_PCHAR_LIST); // reserved one pointer - for internal use
 
-{$if defined(USE_SIMPLE_CLASSES)}
-    EnumPtr:=nil;
-    while sl.EnumItems(EnumPtr, PayloadPtr) do begin
-      iSize:=sizeof(PAnsiChar)+
-             sizeof(AnsiChar)+
-             StrLenA(PAnsiChar(PayloadPtr))+
-             iSize;
-    end;
-{$else}
     for i := 0 to sl.Count-1 do
       iSize:=sizeof(PAnsiChar)+ // pointer to array
              sizeof(AnsiChar)+ // null-terminated ansichar
              DWORD(Length(sl[i]))+ // real string length
              iSize;
-{$ifend}
 
     // make buffer
     Result:=VSAGPS_GetMem(iSize);
@@ -163,17 +148,6 @@ begin
       // starting position
       pLines:=PAnsiChar(Pointer(@(Result.szItems[Result.dwCount])));
       // add lines
-{$if defined(USE_SIMPLE_CLASSES)}
-      EnumPtr:=nil;
-      i:=0;
-      while sl.EnumItems(EnumPtr, PayloadPtr) do begin
-        L := StrLenA(PAnsiChar(PayloadPtr));
-        CopyMemory(pLines, PAnsiChar(PayloadPtr), L+1);
-        Result^.szItems[i]:=pLines;
-        pLines:=PAnsiChar(Pointer(NativeUInt(Pointer(pLines))+L+1));
-        inc(i);
-      end;
-{$else}
       for i := 0 to sl.Count-1 do begin
         s := AnsiString(sl[i]);
         CopyMemory(pLines, PAnsiChar(s), Length(s));
@@ -181,7 +155,6 @@ begin
         Result^.szItems[i]:=pLines;
         pLines:=PAnsiChar(Pointer(NativeUInt(Pointer(pLines))+NativeUInt(Length(s))+1));
       end;
-{$ifend}
     except
       VSAGPS_FreeMem(Result);
       Result:=nil;

@@ -15,9 +15,7 @@ uses
   Windows,
 {$ENDIF}
   SysUtils,
-{$if not defined(USE_SIMPLE_CLASSES)}
   Classes,
-{$ifend}
 {$IFDEF HAS_ANSISTRINGS_UNIT}
   AnsiStrings,
 {$ENDIF}
@@ -46,11 +44,7 @@ type
     destructor Destroy; override;
   end;
 
-{$if defined(USE_SIMPLE_CLASSES)}
-  TList = Tvsagps_List;
-{$else}
   TList = Classes.TList;
-{$ifend}
 
   Tvsagps_Indexed_List = class(Tvsagps_List)
   private
@@ -120,17 +114,8 @@ type
 
   TStringListW = TStringsW;
 
-{$if defined(USE_SIMPLE_CLASSES)}
-{$IFDEF UNICODE}
-  TStrings = TStringsW;
-{$ELSE}
-  TStrings = TStringsA;
-{$ENDIF}
-  TStringList = TStrings;
-{$else}
   TStrings = Classes.TStrings;
   TStringList = Classes.TStringList;
-{$ifend}
 
   TRegistryA = class(TObject)
   private

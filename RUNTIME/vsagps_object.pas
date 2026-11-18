@@ -83,6 +83,7 @@ uses
   vsagps_device_usb_garmin,
   vsagps_device_com_nmea,
   vsagps_device_tcp_nmea,
+  vsagps_device_udp_nmea,
   vsagps_track_reader,
   vsagps_runtime;
 
@@ -512,7 +513,8 @@ begin
            gdt_LocationAPI or
            gdt_FILE_Track or
            gdt_COM_NMEA0183 or
-           gdt_TCP_NMEA0183))) then
+           gdt_TCP_NMEA0183 or
+           gdt_UDP_NMEA0183))) then
     Exit;
   if (nil=AUnitIndexOut) then
     Exit;
@@ -585,6 +587,10 @@ begin
     end else if (gdt_TCP_NMEA0183=(AGPSDevType and gdt_TCP_NMEA0183)) then begin
       // tcp nmea - the device name is a "host:port" string
       p^.objDevice:=Tvsagps_device_tcp_nmea.Create;
+    end else if (gdt_UDP_NMEA0183=(AGPSDevType and gdt_UDP_NMEA0183)) then begin
+      // udp nmea - the device name is an "address:port" (or a bare "port")
+      // of a local listener - the device binds it and reads the datagrams
+      p^.objDevice:=Tvsagps_device_udp_nmea.Create;
     end;
 
     if Assigned(p^.objDevice) then begin

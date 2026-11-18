@@ -43,11 +43,22 @@ procedure Vsagps_Test_Watchdog_Stop;
 // debug log); used for the test progress and the watchdog report
 procedure Vsagps_Test_Log(const AText: AnsiString);
 
+// drain the queued Synchronize callbacks (until the queue stays empty). The
+// thread OnTerminate callbacks of the library are delivered via Synchronize:
+// when a Tvsagps_object is freed while some of its threads are still
+// finishing, their callbacks stay queued and run later on the freed object
+// - when the heap reuses that memory for an object of the next test, the
+// stale handler nils the new object thread fields or just crashes. A test
+// which terminates the library threads itself (GPSDisconnect) must drain
+// right after that, while its object is still alive
+procedure Vsagps_Test_FlushPendingSyncs;
+
 implementation
 
 uses
   Windows,
   SysUtils,
+  Classes,
   Winapi.TlHelp32;
 
 const
@@ -63,6 +74,27 @@ var
   g_TestStartTick: DWORD; // 0 = no test running
   g_SuiteStartTick: DWORD;
   g_WatchdogStopped: Boolean;
+
+{ the sync queue drain }
+
+procedure Vsagps_Test_FlushPendingSyncs;
+var
+  VTicks: DWORD;
+  VIdle: Integer;
+begin
+  // a terminated library thread queues its OnTerminate callback up to one
+  // worker thread delay after the terminate request - keep pumping long
+  // enough to catch them all before concluding the queue is empty
+  VIdle:=0;
+  VTicks:=GetTickCount;
+  while (VIdle<10) and (GetTickCount-VTicks<300) do begin
+    if CheckSynchronize then
+      VIdle:=0
+    else
+      Inc(VIdle);
+    Sleep(10);
+  end;
+end;
 
 { the log }
 

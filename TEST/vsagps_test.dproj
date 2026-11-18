@@ -105,6 +105,7 @@
         </DelphiCompile>
         <DCCReference Include="vsagps_com_checker_test.pas"/>
         <DCCReference Include="vsagps_device_com_nmea_test.pas"/>
+        <DCCReference Include="vsagps_device_udp_nmea_test.pas"/>
         <DCCReference Include="vsagps_device_tcp_nmea_test.pas"/>
         <DCCReference Include="vsagps_tcp_checker_test.pas"/>
         <DCCReference Include="vsagps_test_watchdog.pas"/>
@@ -115,6 +116,7 @@
         <DCCReference Include="..\Runtime\vsagps_device_com_nmea.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_device_nmea_common.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_device_tcp_nmea.pas"/>
+        <DCCReference Include="..\RUNTIME\vsagps_device_udp_nmea.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_device_usb_garmin.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_ini.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_object.pas"/>
@@ -122,11 +124,13 @@
         <DCCReference Include="..\RUNTIME\vsagps_queue.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_runtime.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_tcp_checker.pas"/>
+        <DCCReference Include="..\RUNTIME\vsagps_udp_checker.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_tools.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_track_reader.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_track_saver.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_track_writer.pas"/>
         <DCCReference Include="..\RUNTIME\vsagps_units.pas"/>
+        <DCCReference Include="..\RUNTIME\vsagps_winsock2_compat.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_base.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_classes.pas"/>
         <DCCReference Include="..\PUBLIC\vsagps_public_debugstring.pas"/>

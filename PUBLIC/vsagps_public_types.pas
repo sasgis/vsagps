@@ -218,7 +218,7 @@ type
     chTalkerID: TNMEA_TalkerID;
     chCorrectedTalkerID: TNMEA_TalkerID; // for GNSS - defined by actual sat_id or index of record if no sat_id (first for GPS, second for GLONASS)
     // 1) Selection mode // #0 no data
-    sel_mode: AnsiChar; // M - Manual – Forced to operate in 2D or 3D mode, A - 2D Automatic – Allowed to automatically switch 2D/3D
+    sel_mode: AnsiChar; // M - Manual - Forced to operate in 2D or 3D mode, A - 2D Automatic - Allowed to automatically switch 2D/3D
     // 2) Mode // <0 no data
     fix_mode: SInt8; // 1 - Fix not available, 2 - 2D (<4 SVs used), 3 - 3D (>3 SVs used)
     // 3) ID of 1st satellite used for fix

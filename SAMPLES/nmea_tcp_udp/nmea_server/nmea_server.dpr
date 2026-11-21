@@ -1,11 +1,9 @@
 program nmea_server;
 
 uses
+  nmea_debug_mm,
   Vcl.Forms,
   Vcl.XPMan,
-{$IFDEF MADEXECT}
-  u_MadExcept in '..\madexcept\u_MadExcept.pas',
-{$ENDIF}
   nmea_server_main in 'nmea_server_main.pas';
 
 begin

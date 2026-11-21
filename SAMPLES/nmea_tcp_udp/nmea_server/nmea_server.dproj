@@ -41,15 +41,15 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>..\..\DCU</DCC_DcuOutput>
-        <DCC_ExeOutput>..\..\BIN</DCC_ExeOutput>
+        <DCC_DcuOutput>..\..\..\DCU</DCC_DcuOutput>
+        <DCC_ExeOutput>..\..\..\BIN</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
         <DCC_S>false</DCC_S>
         <DCC_F>false</DCC_F>
         <DCC_K>false</DCC_K>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\common;C:\Program Files (x86)\madCollection\madBasic\BDS37\win32;C:\Program Files (x86)\madCollection\madDisAsm\BDS37\win32;C:\Program Files (x86)\madCollection\madExcept\BDS37\win32;C:\Program Files (x86)\madCollection\madKernel\BDS37\win32;C:\Program Files (x86)\madCollection\madSecurity\BDS37\win32;C:\Program Files (x86)\madCollection\madShell\BDS37\win32;..\..\RUNTIME;..\..\PUBLIC;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\nmea_common;..\..\..\RUNTIME;..\..\..\PUBLIC;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <SanitizedProjectName>nmea_server</SanitizedProjectName>
         <VerInfo_Locale>1049</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
@@ -89,7 +89,8 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="nmea_server_main.pas"/>
-        <DCCReference Include="..\common\nmea_tools_common.pas"/>
+        <DCCReference Include="..\nmea_common\nmea_debug_mm.pas"/>
+        <DCCReference Include="..\nmea_common\nmea_tools_common.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

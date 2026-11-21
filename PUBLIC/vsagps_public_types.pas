@@ -33,6 +33,7 @@ const
 
   dpsffi_SaveToReuse  = $00000001; // load, parse and save file internally - COMPLETELY - before sending trackpoints to EXE (if not - just-in-time parse and send trackpoints)
   dpsffi_OnlyPosition = $00000002; // parse only position - for speed and low memory usage
+  dpsffi_LoopPlayback = $00000004; // replay the sources again and again until the device stop (the fly-on-track device)
 
   cWorkingThread_Connection_Timeout_Sec = 30;
   cWorkingThread_Connection_Timeout_Min = 3;

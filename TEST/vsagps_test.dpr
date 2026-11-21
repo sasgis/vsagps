@@ -14,6 +14,7 @@ uses
   vsagps_device_udp_nmea_test in 'vsagps_device_udp_nmea_test.pas',
   vsagps_device_tcp_nmea_test in 'vsagps_device_tcp_nmea_test.pas',
   vsagps_tcp_checker_test in 'vsagps_tcp_checker_test.pas',
+  vsagps_units_disconnect_test in 'vsagps_units_disconnect_test.pas',
   vsagps_com_checker in '..\RUNTIME\vsagps_com_checker.pas',
   vsagps_device_base in '..\RUNTIME\vsagps_device_base.pas',
   vsagps_device_com_nmea in '..\Runtime\vsagps_device_com_nmea.pas',

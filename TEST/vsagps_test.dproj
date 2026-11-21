@@ -108,6 +108,7 @@
         <DCCReference Include="vsagps_device_udp_nmea_test.pas"/>
         <DCCReference Include="vsagps_device_tcp_nmea_test.pas"/>
         <DCCReference Include="vsagps_tcp_checker_test.pas"/>
+        <DCCReference Include="vsagps_units_disconnect_test.pas"/>
         <DCCReference Include="vsagps_test_watchdog.pas"/>
         <DCCReference Include="vsagps_device_tcp_nmea_test.pas"/>
         <DCCReference Include="vsagps_tcp_checker_test.pas"/>

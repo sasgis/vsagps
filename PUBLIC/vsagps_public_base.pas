@@ -419,7 +419,8 @@ begin
   gs_DoneDisconnected:
     Result:=(gs_ProcessConnecting=new_state);
   gs_ProcessConnecting:
-    Result:=(gs_DoneConnected=new_state);
+    // the user may abort the connecting phase (the async disconnect)
+    Result:=(gs_DoneConnected=new_state) or (gs_ProcessDisconnecting=new_state);
   gs_DoneConnected:
     Result:=(gs_ProcessDisconnecting=new_state);
   gs_ProcessDisconnecting:

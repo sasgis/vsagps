@@ -28,7 +28,7 @@ const
   vgpt_Auxillary      = $00000002; // auxillary packed (undocumented with same structure)
 
   dpdfi_SyncUnitInfo          = $00000001; // synchronize access to unit_info (required if use VSAGPS_GetUnitInfo or Tvsagps_device_base.AllocUnitInfo)
-  dpdfi_UnSyncDisconnected    = $00000002; // disconnected event (WorkerThread.OnTerminate) without Synchronize
+  // $00000002 was dpdfi_UnSyncDisconnected (deliver the disconnected event without Synchronize): the runtime threads are owned by the object since 2026-11-20 and no event is delivered via Synchronize anymore, so the flag was removed - the bit is retired and must not be reused
   dpdfi_ConnectingFromConnect = $00000004; // raise ProcessConnecting event from GPSConnect (not from thread)
 
   dpsffi_SaveToReuse  = $00000001; // load, parse and save file internally - COMPLETELY - before sending trackpoints to EXE (if not - just-in-time parse and send trackpoints)

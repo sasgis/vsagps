@@ -1077,8 +1077,8 @@ begin
       // finishes the disconnect
       VObj.GPSDisconnect;
 
-      // let the terminated threads finish and drain their OnTerminate
-      // callbacks while the object is still alive
+      // let the terminated threads finish (the library delivers nothing via
+      // Synchronize anymore - the flush is a pump safety)
       Vsagps_Test_FlushPendingSyncs;
 
       FreeAndNil(VObj);

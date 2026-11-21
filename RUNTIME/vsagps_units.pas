@@ -21,9 +21,7 @@ unit vsagps_units;
               bound there - the destructor cannot refuse). A
               device thread terminated before its first Execute call also
               just exits (the RTL skips Execute for a terminated thread),
-              so the old GPSRunning-flag wait is not needed either. The
-              dpdfi_UnSyncDisconnected flag became meaningless (nothing is
-              delivered via Synchronize anymore) and is ignored. A device
+              so the old GPSRunning-flag wait is not needed either. A device
               whose raw working thread could not be killed safely is still
               detached and contained (see InternalDetachItem and
               FreeInstance) - that thread is not a TThread and cannot be

@@ -56,9 +56,9 @@ const
   cDisconnect_Wait_Timeout_MSec = 15000;
 
 // wait until the object state comes back to "done disconnected" (the
-// "all disconnected" state is reported by the dispatcher kill section
-// at the end of Execute; the manual CheckSynchronize calls are no-ops
-// in the ownership model and kept as a pump safety)
+// "all disconnected" state is reported by the dispatcher kill section at the
+// end of Execute; the manual CheckSynchronize calls are no-ops in the
+// ownership model and kept as a pump safety)
 function WaitObjectStateDoneDisconnected(const AObj: Tvsagps_object;
                                          const ATimeoutMSec: DWORD): Boolean;
 var
@@ -165,10 +165,9 @@ begin
         VObj.GPSDisconnect;
       end;
 
-      // the disconnect must complete (including the device thread
-      // OnTerminate callbacks, which are delivered via Synchronize - see
-      // the watchdog unit note about draining them while the object is
-      // alive)
+      // the disconnect must complete (the dispatcher finalizes the items in
+      // its kill section at the end of Execute, and the owner waits for the
+      // real thread exit)
       Check(WaitObjectStateDoneDisconnected(VObj, cDisconnect_Wait_Timeout_MSec),
             'the object is not disconnected after the disconnect during the connecting phase');
 

@@ -576,9 +576,9 @@ begin
         while (gs_DoneDisconnected<>VObj.GPSState) and
               (GetTickCount-VTicks<cDisconnect_Wait_Timeout_MSec) do begin
           Sleep(50);
-          // the "all disconnected" state is reported from the device thread
-          // OnTerminate handler which is delivered via Synchronize - a
-          // console application has no message pump, so sync it manually
+          // the "all disconnected" state is reported from the kill section of
+          // the dispatcher thread at the end of its Execute - no pump is
+          // needed anymore (the library does not use Synchronize)
           CheckSynchronize;
         end;
         Check(gs_DoneDisconnected=VObj.GPSState, 'device is not disconnected');
@@ -850,11 +850,10 @@ begin
       // performs the waited disconnect (the same path as the destructor),
       // so the connect must abort through the exit flag and not after the
       // whole connection timeout. The connect wait is sliced (250 msec)
-      // with the exit check between the slices. The threads are terminated
-      // by the async disconnect and their OnTerminate callbacks (delivered
-      // via Synchronize) are drained here, while the object is still alive -
-      // a callback left queued would run on the freed object in a later
-      // pump and corrupt whatever the heap has placed at that address
+      // with the exit check between the slices. The async disconnect
+      // terminates the runtime threads; the flush below is a no-op for the
+      // library (the threads are owned by the object and deliver nothing via
+      // Synchronize since 2026-11-20), kept as a pump safety
       VTicks:=GetTickCount;
       VObj.GPSDisconnect;
       Vsagps_Test_FlushPendingSyncs;

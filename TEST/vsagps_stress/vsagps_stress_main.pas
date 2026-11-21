@@ -7,26 +7,33 @@ unit vsagps_stress_main;
   2026-11-19: created.
 
   Console stress tool for the Tvsagps_object runtime-thread lifecycle. It
-  targets the race between the object destructor and the OnTerminate
-  callbacks of the FreeOnTerminate runtime threads (Tvsagps_Device_Thread /
-  Tvsagps_Packet_Thread, delivered via TThread.Synchronize): destroying the
-  object while a thread is winding down used to delete the critical sections
-  and free the object with the callback still queued - the stale handler
-  then entered the freed memory (the TestUdpObjectFactorySmoke access
-  violation, fixed by the WaitForTerminateDelivery / FreeInstance leak
-  fallback and by finalizing the items before the packet queue).
+  targets the race between the object destructor and the runtime threads
+  (Tvsagps_Device_Thread / Tvsagps_Packet_Thread): destroying the object
+  while a thread is winding down used to delete the critical sections and
+  free the object with a callback still queued - the stale handler then
+  entered the freed memory (the TestUdpObjectFactorySmoke access violation).
+  Since 2026-11-20 the runtime threads are owned by the object: the items
+  are finalized in the kill section of the dispatcher thread at the end of
+  its Execute and the owner waits for the real thread exit, so no callback
+  is delivered through TThread.Synchronize anymore. What is still checked
+  here is that the teardown is bounded: a device driver which never returns
+  from its close is detached and contained (InternalDetachItem /
+  FreeInstance), and the object is leaked on purpose in that case - see
+  VSAGPS_EMULATE_HUNG_DEVICE_CLOSE / VSAGPS_EMULATE_HUNG_DEVICE_READ.
 
   The tool creates and destroys a Tvsagps_object in a loop and tears it down
   in every order: immediately after GPSConnect, right after an asynchronous
   GPSDisconnect, while connected, after the normal done-disconnected state,
   after a local NMEA stream, and after a connect which fails asynchronously
-  (the device thread queues its OnTerminate while the main thread does not
-  pump the sync queue). The endpoints are self-contained: a free
+  (the device thread fails its bind and exits by itself). The endpoints are
+  self-contained: a free
   127.0.0.1 udp port, an occupied 127.0.0.1 udp port and the TEST-NET-3
   black-hole TCP address.
 
   The main thread pumps CheckSynchronize between the steps, as a real host
-  application does. A hung iteration (the in-process watchdog), an
+  application does (the library no longer needs the pump - it is kept
+  because the tests and the sample hosts still call it). A hung iteration
+  (the in-process watchdog), an
   unexpected connect/state and a library thread left behind (the thread
   snapshot vs. the baseline) are reported. A thread still above the baseline
   right after a disconnect is re-checked with a longer budget and is only
@@ -45,13 +52,11 @@ unit vsagps_stress_main;
     -iteration-timeout=SEC per-iteration watchdog (default 60, 0 = off)
     -total-timeout=SEC     whole-run watchdog (default 3600, 0 = off)
     -trace                 log every iteration (default: every 10th)
-    -unsync                set dpdfi_UnSyncDisconnected for every object (the
-                           dispatcher OnTerminate is delivered without
-                           Synchronize, on the dispatcher thread itself)
     -destroy-worker        free every object on a worker thread instead of
-                           the main thread (no Synchronize pump there - the
-                           queued callbacks are waited for passively and the
-                           leak fallback is the designed outcome)
+                           the main thread (the destructor then runs on a
+                           thread which is not the one the library was used
+                           from; a slow teardown there is reported as a note,
+                           not a warning)
     -help                  this text
 
   Exit codes: 0 - passed; 1 - bad command line; 2 - completed with warnings;
@@ -144,7 +149,6 @@ type
     IterationTimeoutMSec: DWORD;
     TotalTimeoutMSec: DWORD;
     Trace: Boolean;
-    UnSyncDisconnected: Boolean;
     DestroyInWorker: Boolean;
   end;
 
@@ -219,7 +223,6 @@ var
   g_Warnings: Integer;
 
   // the run modes (set from the command line)
-  g_UnSyncDisconnected: Boolean;
   g_DestroyInWorker: Boolean;
 
 { the log }
@@ -254,7 +257,6 @@ begin
   StressLog('  -total-timeout=SEC     whole-run watchdog (default '+
              IntToStr(cStress_Default_Total_Timeout_MSec div 1000)+', 0 = off)');
   StressLog('  -trace                 log every iteration (default: every 10th)');
-  StressLog('  -unsync                set dpdfi_UnSyncDisconnected for every object');
   StressLog('  -destroy-worker        free every object on a worker thread');
   StressLog('  -help                  this text');
 end;
@@ -453,14 +455,15 @@ var
 begin
   VTicks:=GetTickCount;
   repeat
-    // the host callbacks of the library threads are delivered here
+    // the host callbacks of the library threads used to be delivered here
     CheckSynchronize;
     Sleep(1);
   until (DWORD(GetTickCount-VTicks)>=AMSec);
 end;
 
-// pump until the library threads are gone (their OnTerminate callbacks are
-// delivered by the pump; a thread blocked inside Synchronize exits only then)
+// pump until the library threads are gone (the pump is a leftover of the old
+// Synchronize delivery: the threads are owned by the object now and exit by
+// themselves, the settle only waits for the asynchronous OS exit)
 function StressWaitThreads(const ATimeoutMSec: DWORD): Boolean;
 var
   VTicks: DWORD;
@@ -692,7 +695,6 @@ begin
   AOpt.IterationTimeoutMSec:=cStress_Default_Iteration_Timeout_MSec;
   AOpt.TotalTimeoutMSec:=cStress_Default_Total_Timeout_MSec;
   AOpt.Trace:=FALSE;
-  AOpt.UnSyncDisconnected:=FALSE;
   AOpt.DestroyInWorker:=FALSE;
 
   Result:=spr_Ok;
@@ -703,8 +705,6 @@ begin
       Exit;
     end else if SameText(VName, 'trace') then begin
       AOpt.Trace:=TRUE;
-    end else if SameText(VName, 'unsync') then begin
-      AOpt.UnSyncDisconnected:=TRUE;
     end else if SameText(VName, 'destroy-worker') then begin
       AOpt.DestroyInWorker:=TRUE;
     end else if SameText(VName, 'iterations') then begin
@@ -859,9 +859,10 @@ end;
 { the object helpers }
 
 // the context of the worker thread which frees the library object (the
-// -destroy-worker mode): the destructor runs without any Synchronize pump on
-// the destroying thread, so the queued OnTerminate callbacks are waited for
-// passively and the leak fallback is the designed outcome then
+// -destroy-worker mode): the destructor runs on a thread which is not the one
+// the library was used from - the runtime threads are still terminated and
+// waited for with a bound, the leak fallback stays the designed outcome for a
+// hung device
 type
   TStress_Free_Worker_Params = record
     ObjPtr: PPointer;
@@ -900,8 +901,6 @@ begin
   AParams.dwSourceFileFlagsIn:=0;
   AParams.dwSourceFileFlagsOut:=0;
   AParams.dwDeviceFlagsIn:=0;
-  if g_UnSyncDisconnected then
-    AParams.dwDeviceFlagsIn:=AParams.dwDeviceFlagsIn or dpdfi_UnSyncDisconnected;
   AParams.dwDeviceFlagsOut:=0;
   AParams.iBaudRate:=-1;
   AParams.pSessionStartedHandler:=StressSessionStartedCallback;
@@ -977,10 +976,10 @@ begin
 
   VTicks:=GetTickCount;
   if g_DestroyInWorker then begin
-    // the destructor runs on a worker thread: there is no Synchronize pump
-    // there, so the queued OnTerminate callbacks are waited for passively -
-    // a timeout and the object leak are the designed fallback (the threads
-    // themselves are checked by the settle after the iteration)
+    // the destructor runs on a worker thread (not the one the library was
+    // used from) - a timeout and the object leak are the designed fallback
+    // for a hung device (the threads themselves are checked by the settle
+    // after the iteration)
     ZeroMemory(@VWorkerParams, SizeOf(VWorkerParams));
     VWorkerParams.ObjPtr:=@AObj;
     VWorkerParams.DoneEvent:=CreateEvent(nil, TRUE, FALSE, nil);
@@ -1017,18 +1016,19 @@ begin
 
   if (VElapsed>=cStress_Slow_Teardown_MSec) then begin
     if g_DestroyInWorker then begin
-      // the passive wait of the worker destructor times out when the queued
-      // callbacks are not delivered - the object is leaked on purpose (the
-      // designed fallback, not a failure)
+      // the worker destructor waited out one of its bounds (the graceful
+      // device close, the kill lock, the release of a runtime thread) - the
+      // object is leaked on purpose, this is the designed fallback
       StressLog('[NOTE] iteration '+IntToStr(AIndex)+
                 ' ('+StressScenarioName(AScenario)+
                 '): the worker destructor took '+IntToStr(VElapsed)+
-                ' ms (the queued callbacks were not delivered - the object is leaked on purpose)');
+                ' ms (a teardown bound expired - the object is leaked on purpose)');
     end else begin
       Result:=TRUE;
       StressWarn(AIndex, AScenario,
                  'the destructor took '+IntToStr(VElapsed)+
-                 ' ms (a runtime-thread callback delivery timed out - the object is leaked on purpose)');
+                 ' ms (a teardown bound expired: a device driver which does not '+
+                 'return from its close is detached and the object is leaked on purpose)');
     end;
   end;
 end;
@@ -1174,9 +1174,9 @@ begin
     end;
 
     ssFail: begin
-      // the device thread fails its udp bind, queues the OnTerminate via
-      // Synchronize and the main thread does not pump - the destructor must
-      // deliver the queued callback itself (the stale-callback AV path)
+      // the device thread fails its udp bind and exits by itself while the
+      // main thread does not pump - the destructor must still finish the
+      // teardown cleanly (the old stale-callback AV path)
       VHolder:=StressHoldUdpPort(VPort);
       if (INVALID_SOCKET=VHolder) then begin
         StressWarn(AIndex, AScenario, 'cannot reserve a local udp port');
@@ -1426,12 +1426,10 @@ begin
     end;
 
     g_ExeModuleName:=ExtractFileName(ParamStr(0));
-    g_UnSyncDisconnected:=VOpt.UnSyncDisconnected;
     g_DestroyInWorker:=VOpt.DestroyInWorker;
     StressLog('vsagps_stress: iterations='+IntToStr(VOpt.Iterations)+
               ', delay<='+IntToStr(VOpt.DelayMSec)+' ms'+
               ', seed='+IntToStr(VOpt.Seed)+
-              ', unsync='+BoolToStr(g_UnSyncDisconnected, TRUE)+
               ', destroy-worker='+BoolToStr(g_DestroyInWorker, TRUE));
     StressLog('the endpoints are local (127.0.0.1 udp) and TEST-NET-3 (tcp)');
 
